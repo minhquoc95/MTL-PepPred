@@ -30,7 +30,7 @@ Input: Peptide Sequence
     └─────────────────────────────────────────────────┘
                       ↓
     ┌─────────────────────────────────────────────────┐
-    │          Task-Specific Heads (20 tasks)          │
+    │          Task-Specific Heads (21 tasks)          │
     │  ┌─────────────────────────────────────────────┐ │
     │  │  SequenceHead: 2560 → 256 → 128 → 2        │ │
     │  │  - Masked average pooling                   │ │
@@ -62,7 +62,8 @@ Input: Peptide Sequence
 17. Antifungal - Antifungal peptides
 18. Antiviral - Antiviral peptides
 19. Toxicity - Toxicity prediction
-20. Signal_peptide - Signal peptides
+20. Antioxidant - Antioxidant activity
+21. Signal_peptide - Signal peptides
 
 ## Files
 
