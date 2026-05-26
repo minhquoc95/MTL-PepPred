@@ -51,13 +51,13 @@ Input: Peptide Sequence
 6. Antimalarial - Antimalarial activity (main)
 7. Antimalarial_alt - Antimalarial activity (alternative)
 8. Quorum_sensing - Quorum sensing activity
-9. Anticancer - Anticancer activity (main)
-10. Anticancer_alt - Anticancer activity (alternative)
+9. Anticancer_alt - Anticancer activity (alternative)
+10. Anticancer - Anticancer activity (main)
 11. AntiMRSA - Anti-MRSA strains activity
-12. TTCA - Therapeutic peptides for cancer
+12. TTCA - Tumour T cell antigens
 13. BBP - Blood-Brain Barrier peptides
 14. Anti_parasitic - Anti-parasitic peptides
-15. NeuroPred - Neuroprotective peptides
+15. Neuropeptide - Neuroprotective peptides
 16. Antibacterial - Antibacterial peptides
 17. Antifungal - Antifungal peptides
 18. Antiviral - Antiviral peptides
@@ -90,7 +90,7 @@ Input: Peptide Sequence
 | Gradient Clipping | 1.0 |
 | Label Smoothing | 0.1 |
 | Mixed Precision | Enabled |
-| TIM Loss | Enabled |
+| TUM Loss | Enabled |
 | ESM Ratio | 0.9 |
 | Transformer Layers | 4 |
 
@@ -102,7 +102,7 @@ Input: Peptide Sequence
 # Default training
 python train_mtl.py --batch_size 16 --lr 1e-4 --epochs 50 --dropout 0.3
 
-# Without TIM loss
+# Without TUM loss
 python train_mtl.py --no_tim
 
 # Custom label smoothing
@@ -132,8 +132,8 @@ python train_mtl.py --unfreeze_esm --lr 1e-5
 # ESM ratio 0.5 (equal mix of ESM + base embedding)
 python train_mtl.py --esm_ratio 0.5
 
-# Without TIM loss
-python train_mtl.py --no_tim
+# Without TUM loss
+python train_mtl.py --no_tum
 
 # Custom run name
 python train_mtl.py --no_cnn --ablation_name my_experiment
@@ -215,7 +215,7 @@ with torch.no_grad():
 | `--unfreeze_esm` | Allow ESM-2 gradients (fine-tuning) | Off |
 | `--esm_ratio` | ESM-2 weight in embedding mix (0–1) | 0.9 |
 | `--transformer_layers` | Number of shared Transformer layers | 4 |
-| `--no_tim` | Disable TIM multi-task loss | Off |
+| `--no_tim` | Disable TUM multi-task loss | Off |
 | `--label_smoothing` | Label smoothing factor | 0.1 |
 | `--ablation_name` | Custom checkpoint directory name | auto |
 
@@ -225,7 +225,7 @@ Each run saves an `ablation_config.json` alongside the checkpoint for full repro
 
 - **Ablatable Architecture**: Transformer and CNN branches can be independently disabled via CLI
 - **ESM-2 Backbone**: Frozen by default; can be unfrozen for fine-tuning
-- **TIM Loss**: Threshold-Independent Multi-task loss with learnable per-task log variances
+- **TUM Loss**: Threshold-Independent Multi-task loss with learnable per-task log variances
 - **Masked Pooling**: Handles variable-length peptide sequences
 - **Auto Variant Naming**: Checkpoint directories named automatically from active ablation flags
 - **Windows Compatible**: DataLoader `num_workers` auto-set to 0 on Windows
@@ -245,7 +245,7 @@ openpyxl
 
 ## References
 
-- ESM-2: Lin et al. (2023) - Evolutionary Scale Prediction of Protein Function with Language Models
+- ESM-2: Lin et al. (2023) - Evolutionary-scale prediction of atomic-level protein structure with a language model
 - PDeepPP: Original architecture inspiration
-- TIM Loss: Kendall et al. (2018) - Multi-Task Learning Using Uncertainty to Weigh Losses
+- TUM Loss: Kendall et al. (2018) - Multi-Task Learning Using Uncertainty to Weigh Losses
 - UniDL4BioPep: Benchmark dataset for peptide activity prediction
