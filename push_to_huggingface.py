@@ -1,20 +1,43 @@
 """
-Script to upload the MTL Peptide Classifier to HuggingFace Hub.
+Upload the MTL Peptide Classifier (22 tasks) to HuggingFace Hub.
+
+Auth: requires `huggingface-cli login` or HF_TOKEN / HUGGING_FACE_HUB_TOKEN in env.
+Run:  python3 push_to_huggingface.py
 """
 
+import json
 import os
 import shutil
-from huggingface_hub import HfApi, login
 from pathlib import Path
 
-# Configuration
-MODEL_NAME = "minhquoc95/MTL-PepPred"
-CHECKPOINT_DIR = "checkpoints/best_model"
-REPO_ID = MODEL_NAME
+from huggingface_hub import HfApi
 
-def create_model_card():
-    """Create a README.md for the model."""
-    return """---
+# Configuration
+REPO_ID = "minhquoc95/MTL-PepPred"
+CHECKPOINT_DIR = Path(__file__).parent / "checkpoints" / "full_model" / "best_model"
+RESULTS_DIR = Path(__file__).parent / "checkpoints" / "full_model"
+
+# Inference-only file set (skip 3.87 GB checkpoint.pt — full optimizer state)
+INFERENCE_FILES = ["heads.pt", "shared_backbone.pt", "ablation_config.json"]
+
+
+def load_test_results() -> dict:
+    with open(RESULTS_DIR / "test_results.json") as f:
+        return json.load(f)
+
+
+def build_per_task_table(results: dict) -> str:
+    rows = ["| Task | ACC | F1 | AUC | MCC |", "|---|---|---|---|---|"]
+    for name, m in results["test_metrics"].items():
+        rows.append(
+            f"| {name} | {m['accuracy']:.4f} | {m['f1']:.4f} | {m['auc']:.4f} | {m['mcc']:.4f} |"
+        )
+    return "\n".join(rows)
+
+
+def create_model_card(results: dict) -> str:
+    per_task = build_per_task_table(results)
+    return f"""---
 license: mit
 base_model: facebook/esm2_t33_650M_UR50D
 tags:
@@ -25,186 +48,193 @@ tags:
 - classification
 ---
 
-# MTL Peptide Classifier (19 Tasks)
+# MTL Peptide Classifier (22 Tasks)
 
-## Model Description
+Multi-Task Learning peptide classifier covering 22 binary peptide-activity tasks. Built on a frozen ESM-2 (650M) backbone with a parallel Transformer + CNN feature extractor and per-task heads, following a PDeepPP-inspired design.
 
-Multi-Task Learning (MTL) peptide classifier for 19 UniDL4BioPep peptide activity datasets.
-Uses PDeepPP-inspired architecture with frozen ESM-2 backbone.
+## Held-out Test Set Performance (Averaged across 22 tasks)
 
-### Performance
-- Average Accuracy: 89.49%
-- Average AUC: 94.15%
-- Average PR-AUC: 92.85%
-- Average MCC: 78.88%
+| Metric | Value |
+|---|---|
+| Accuracy | {results['test_avg_acc']*100:.2f}% |
+| F1       | {results['test_avg_f1']*100:.2f}% |
+| AUC      | {results['test_avg_auc']*100:.2f}% |
+| MCC      | {results['test_avg_mcc']*100:.2f}% |
 
-### Architecture
-- **Shared Encoder**: Frozen ESM-2 (650M params) + learnable base embedding
-- **Feature Extraction**: 4-layer Transformer + CNN (parallel)
-- **Task Heads**: 19 binary classifiers (one per peptide activity)
+Best Val Avg F1 (used for checkpoint selection): {results['best_val_avg_f1']*100:.2f}%
 
-## The 19 Peptide Activity Tasks
+## Per-Task Test Metrics
 
-1. ACE_inhibitory - ACE inhibitory activity
-2. DPPIV_inhibitory - DPPIV inhibitory activity
-3. Bitter - Bitter taste peptides
-4. Umami - Umami taste peptides
-5. Antimicrobial - Antimicrobial activity
-6. Antimalarial - Antimalarial activity (main)
-7. Antimalarial_alt - Antimalarial activity (alternative)
-8. Quorum_sensing - Quorum sensing activity
-9. Anticancer - Anticancer activity (main)
-10. Anticancer_alt - Anticancer activity (alternative)
-11. AntiMRSA - Anti-MRSA strains activity
-12. TTCA - Therapeutic peptides for cancer
-13. BBP - Blood-Brain Barrier peptides
-14. Anti_parasitic - Anti-parasitic peptides
-15. NeuroPred - Neuroprotective peptides
-16. Antibacterial - Antibacterial peptides
-17. Antifungal - Antifungal peptides
-18. Antiviral - Antiviral peptides
-19. Toxicity - Toxicity prediction
+{per_task}
+
+## Architecture
+
+- **Shared encoder**: frozen ESM-2 (`facebook/esm2_t33_650M_UR50D`, 650M params) + learnable base embedding, mixed at `esm_ratio=0.9`
+- **Feature extraction (parallel)**: 4-layer Transformer + CNN (kernel=7, padding=3) → concatenated to 2560-dim features
+- **Heads**: 22 binary classifiers (`2560 → 256 → 128 → 2`) with masked average pooling
+- **Loss**: TIM (Threshold-Independent Multi-task) loss + label smoothing 0.1
+
+## Tasks
+
+| # | Task | Source |
+|---|---|---|
+| 1 | ACE_inhibitory | UniDL4BioPep |
+| 2 | DPPIV_inhibitory | UniDL4BioPep |
+| 3 | Bitter | UniDL4BioPep |
+| 4 | Umami | UniDL4BioPep |
+| 5 | Antimicrobial | UniDL4BioPep |
+| 6 | Antimalarial (main) | UniDL4BioPep |
+| 7 | Antimalarial_alt | UniDL4BioPep |
+| 8 | Quorum_sensing | UniDL4BioPep |
+| 9 | Anticancer (main) | UniDL4BioPep |
+| 10 | Anticancer_alt | UniDL4BioPep |
+| 11 | AntiMRSA | UniDL4BioPep |
+| 12 | TTCA | UniDL4BioPep |
+| 13 | BBP | UniDL4BioPep |
+| 14 | Anti_parasitic | UniDL4BioPep |
+| 15 | NeuroPred | UniDL4BioPep |
+| 16 | Antibacterial | UniDL4BioPep |
+| 17 | Antifungal | UniDL4BioPep |
+| 18 | Antiviral | UniDL4BioPep |
+| 19 | Toxicity | UniDL4BioPep |
+| 20 | Anti_inflammatory | local dataset |
+| 21 | Signal_peptide | local dataset |
+| 22 | Antioxidant | UniDL4BioPep (antioxidant_FRS) |
 
 ## Usage
 
 ```python
+import os
 from huggingface_hub import hf_hub_download
 import torch
-
-# Download model files
-checkpoint_dir = "MTL-Peptide-Classifier-19tasks"
-os.makedirs(checkpoint_dir, exist_ok=True)
-
-for file in ["checkpoint.pt", "heads.pt", "shared_backbone.pt"]:
-    hf_hub_download(
-        repo_id="minhquoc95/MTL-PepPred",
-        filename=file,
-        local_dir=checkpoint_dir
-    )
-
-# Load model (requires mtl_peptide_classifier.py)
-from mtl_peptide_classifier import MTLPeptideClassifier, get_all_peptide_tasks
 from transformers import EsmTokenizer
 
+from mtl_peptide_classifier import MTLPeptideClassifier, get_all_peptide_tasks
+
+REPO = "{REPO_ID}"
+checkpoint_dir = "MTL-Peptide-Classifier"
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+for fname in ["heads.pt", "shared_backbone.pt", "ablation_config.json"]:
+    hf_hub_download(repo_id=REPO, filename=fname, local_dir=checkpoint_dir)
+
 tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-task_configs = get_all_peptide_tasks("datasets")
+task_configs = get_all_peptide_tasks("datasets")  # needs local datasets/ dir for task names
 
 model = MTLPeptideClassifier(
     task_configs=task_configs,
     hidden_dim=1280,
     esm_ratio=0.9,
     num_transformer_layers=4,
-    dropout=0.3
+    dropout=0.3,
+    use_transformer=True,
+    use_cnn=True,
+    unfreeze_esm=False,
 )
 
-# Load checkpoint
 device = "cuda" if torch.cuda.is_available() else "cpu"
-backbone = torch.load(f"{checkpoint_dir}/shared_backbone.pt", map_location=device)
-heads = torch.load(f"{checkpoint_dir}/heads.pt", map_location=device)
+backbone = torch.load(f"{{checkpoint_dir}}/shared_backbone.pt", map_location=device)
+heads = torch.load(f"{{checkpoint_dir}}/heads.pt", map_location=device)
 
-# Load weights
-model.base_embed.load_state_dict(backbone['base_embed'])
-model.transformer.load_state_dict(backbone['transformer'])
-model.cnn.load_state_dict(backbone['cnn'])
-model.layer_norm.load_state_dict(backbone['layer_norm'])
-
+model.base_embed.load_state_dict(backbone["base_embed"])
+if "transformer" in backbone:
+    model.transformer.load_state_dict(backbone["transformer"])
+if "cnn" in backbone:
+    model.cnn.load_state_dict(backbone["cnn"])
+    model.layer_norm.load_state_dict(backbone["layer_norm"])
 for name, head in model.heads.items():
     if name in heads:
         head.load_state_dict(heads[name])
 
-model = model.to(device)
-model.eval()
+model = model.to(device).eval()
+
+sequence = "MKWVTFISLLFLFSSAYSRGVFRR"
+tokens = " ".join(list(sequence))
+inputs = tokenizer(tokens, return_tensors="pt", max_length=128, padding="max_length", truncation=True)
+with torch.no_grad():
+    logits = model(inputs["input_ids"].to(device), inputs["attention_mask"].to(device), task_name="Antimicrobial")
+    probs = torch.softmax(logits, dim=-1)
 ```
+
+## Training
+
+- Base model: `facebook/esm2_t33_650M_UR50D` (frozen)
+- Batch size: 16, learning rate: 1e-4, 50 epochs, dropout: 0.3
+- 3-way split per task: 80% train / 20% val (checkpoint selection) / held-out test CSV evaluated once
+- Mixed precision, gradient clipping 1.0, cosine LR with 5 warmup epochs
+- TIM loss + label smoothing 0.1
+
+## Files
+
+- `heads.pt` — per-task classifier heads
+- `shared_backbone.pt` — base embedding, Transformer, CNN, LayerNorm
+- `ablation_config.json` — architecture configuration for reproducibility
+- `test_results.json` — held-out test metrics (per task + averages)
+- `mtl_peptide_classifier.py` — model code
 
 ## Requirements
 
 ```
 torch>=2.0.0
 transformers>=4.30.0
-esm
+huggingface_hub
 numpy
 pandas
 scikit-learn
 ```
-
-## Training Details
-
-- Base Model: facebook/esm2_t33_650M_UR50D (frozen)
-- Training Datasets: UniDL4BioPep benchmark
-- Batch Size: 16
-- Learning Rate: 1e-4
-- Epochs: 50
-- Dropout: 0.3
-- Mixed Precision: Enabled
 """
 
+
 def upload_to_huggingface():
-    """Upload model to HuggingFace Hub."""
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    api = HfApi(token=token)
 
-    api = HfApi()
-
-    # Check if logged in
     try:
         user_info = api.whoami()
-        print(f"Logged in as: {user_info}")
+        print(f"Logged in as: {user_info.get('name', user_info)}")
     except Exception as e:
-        print("Not logged in. Please run: huggingface-cli login")
+        print(f"Not logged in: {e}")
+        print("Run: huggingface-cli login   (or export HF_TOKEN=<token>)")
         return
 
-    # Create repository
-    try:
-        repo_url = api.create_repo(
-            repo_id=REPO_ID.split('/')[-1],
-            repo_type="model",
-            private=False,
-            exist_ok=True
-        )
-        print(f"Repository created/exists: {repo_url}")
-    except Exception as e:
-        print(f"Error creating repo: {e}")
-        return
+    repo_url = api.create_repo(repo_id=REPO_ID, repo_type="model", private=False, exist_ok=True)
+    print(f"Repository ready: {repo_url}")
 
-    # Create temporary directory for upload
-    upload_dir = Path("hf_upload_temp")
-    upload_dir.mkdir(exist_ok=True)
+    upload_dir = Path(__file__).parent / "hf_upload_temp"
+    if upload_dir.exists():
+        shutil.rmtree(upload_dir)
+    upload_dir.mkdir()
 
-    # Copy checkpoint files
-    print("Copying model files...")
-    checkpoint_files = ["checkpoint.pt", "heads.pt", "shared_backbone.pt"]
+    print("Staging files...")
+    for fname in INFERENCE_FILES:
+        src = CHECKPOINT_DIR / fname
+        if not src.exists():
+            print(f"  MISSING: {src}")
+            shutil.rmtree(upload_dir)
+            return
+        shutil.copy(src, upload_dir / fname)
+        size_mb = src.stat().st_size / (1024 * 1024)
+        print(f"  + {fname} ({size_mb:.1f} MB)")
 
-    for file in checkpoint_files:
-        src = Path(CHECKPOINT_DIR) / file
-        if src.exists():
-            shutil.copy(src, upload_dir / file)
-            print(f"  Copied {file}")
-        else:
-            print(f"  Warning: {file} not found")
+    test_results_src = RESULTS_DIR / "test_results.json"
+    shutil.copy(test_results_src, upload_dir / "test_results.json")
+    print(f"  + test_results.json")
 
-    # Create README
+    code_src = Path(__file__).parent / "mtl_peptide_classifier.py"
+    shutil.copy(code_src, upload_dir / "mtl_peptide_classifier.py")
+    print(f"  + mtl_peptide_classifier.py")
+
+    results = load_test_results()
     readme_path = upload_dir / "README.md"
-    with open(readme_path, "w") as f:
-        f.write(create_model_card())
-    print("Created README.md")
+    readme_path.write_text(create_model_card(results))
+    print(f"  + README.md")
 
-    # Copy model architecture file
-    if Path("mtl_peptide_classifier.py").exists():
-        shutil.copy("mtl_peptide_classifier.py", upload_dir / "mtl_peptide_classifier.py")
-        print("Copied mtl_peptide_classifier.py")
+    print("\nUploading to HuggingFace Hub...")
+    api.upload_folder(repo_id=REPO_ID, folder_path=str(upload_dir), repo_type="model")
 
-    # Upload files
-    print("\nUploading files to HuggingFace Hub...")
-    api.upload_folder(
-        repo_id=REPO_ID,
-        folder_path=str(upload_dir),
-        repo_type="model"
-    )
-
-    print(f"\n✅ Model uploaded successfully!")
-    print(f"🔗 View at: https://huggingface.co/{REPO_ID}")
-
-    # Cleanup
+    print(f"\nDone. View at: https://huggingface.co/{REPO_ID}")
     shutil.rmtree(upload_dir)
-    print("Cleaned up temporary files")
+
 
 if __name__ == "__main__":
     upload_to_huggingface()

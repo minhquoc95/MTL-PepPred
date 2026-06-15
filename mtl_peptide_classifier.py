@@ -378,7 +378,6 @@ def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
         "15__Antifungal_AF": "Antifungal",
         "16__AV_Antiviral": "Antiviral",
         "17__Toxicity_2021_Dataset": "Toxicity",
-        "18__Anti_inflammatory_peptides": "Anti_inflammatory",
         "19__Signal_peptides": "Signal_peptide",
         "21__Antioxidant_FRS": "Antioxidant"
     }

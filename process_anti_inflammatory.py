@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 
 # Read the dataset
 script_dir = Path(__file__).parent
-input_file = script_dir / "Anti inflamatory peptide_dataset.csv"
+input_file = script_dir / "Anti_inflamatory_peptide_dataset.csv"
 datasets_dir = script_dir / "datasets"
 
 # Create datasets directory if not exists
