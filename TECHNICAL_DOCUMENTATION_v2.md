@@ -8,13 +8,13 @@ Version 2.0 --- Updated May 2026
 
 ## 1.1 Research Objective {#research-objective}
 
-This project implements a deep learning-based multi-task learning (MTL) system for simultaneous classification of 20 distinct peptide bioactivity types. The system leverages a frozen pre-trained protein language model (ESM-2, 650M parameters) with task-specific classification heads to achieve state-of-the-art performance across diverse peptide classification tasks from the extended UniDL4BioPep benchmark, including food-relevant bioactivities such as ACE inhibition, DPPIV inhibition, bitter taste, umami taste, and antimicrobial preservation.
+This project implements a deep learning-based multi-task learning (MTL) system for simultaneous classification of 21 distinct peptide bioactivity types. The system leverages a frozen pre-trained protein language model (ESM-2, 650M parameters) with task-specific classification heads to achieve state-of-the-art performance across diverse peptide classification tasks from the extended UniDL4BioPep benchmark, including food-relevant bioactivities such as ACE inhibition, DPPIV inhibition, bitter taste, umami taste, and antimicrobial preservation.
 
 ## 1.2 Core Innovation {#core-innovation}
 
-The architecture combines a frozen ESM-2 backbone with a dual-branch feature extractor (Transformer + CNN) and a task-uncertainty multi-task (TUM) loss function, enabling efficient knowledge transfer across 20 diverse peptide bioactivity prediction tasks. Freezing the backbone reduces trainable parameters by \~98% relative to full fine-tuning (from 650M to \~52M) while preventing catastrophic forgetting of pre-trained protein representations.
+The architecture combines a frozen ESM-2 backbone with a dual-branch feature extractor (Transformer + CNN) and a task-uncertainty multi-task (TUM) loss function, enabling efficient knowledge transfer across 21 diverse peptide bioactivity prediction tasks. Freezing the backbone reduces trainable parameters by \~98% relative to full fine-tuning (from 650M to \~52M) while preventing catastrophic forgetting of pre-trained protein representations.
 
-**Key update from v1.0:** Task 20 has been replaced from Anti-inflammatory (custom, 14,400 train/3,600 test) to a newly curated Signal Peptide dataset (3,413 positive + 3,413 negative sequences; 2,730/683 train/test split per class). All performance metrics, task tables, and dataset descriptions have been updated accordingly.
+**Key update from v1.0:** Task  has been replaced from Anti-inflammatory (custom, 14,400 train/3,600 test) to a newly curated Signal Peptide dataset (3,413 positive + 3,413 negative sequences; 2,730/683 train/test split per class). All performance metrics, task tables, and dataset descriptions have been updated accordingly.
 
 # 2. System Architecture {#system-architecture}
 
@@ -50,7 +50,7 @@ Feature Fusion: Concatenation → 2560-dimensional vector
 
 ↓
 
-Task-Specific Classification Heads (20 independent binary classifiers)
+Task-Specific Classification Heads (21 independent binary classifiers)
 
 ├── Masked Average Pooling (handles variable-length sequences)
 
@@ -82,10 +82,10 @@ Task-Specific Classification Heads (20 independent binary classifiers)
 | Base Embedding (33 × 1280)      | \~42K          | Yes           |
 | Shared Transformer (4 layers)   | \~26--27M      | Yes           |
 | CNN Branch (Conv1d + LayerNorm) | \~11.5M        | Yes           |
-| Task Heads (20 × MLP)           | \~13.8M        | Yes           |
+| Task Heads ( × MLP)           | \~13.8M        | Yes           |
 | **Total Trainable**             | **\~52M**      | **Yes**       |
 
-*Note: The 12M figure in v1.0 documentation was incorrect. The correct total trainable parameter count is \~52M, comprising the shared Transformer (\~26-27M), CNN branch (\~11.5M), 20 task heads (\~13.8M), and learnable base embeddings (\~42K).*
+*Note: The 12M figure in v1.0 documentation was incorrect. The correct total trainable parameter count is \~52M, comprising the shared Transformer (\~26-27M), CNN branch (\~11.5M),  task heads (\~13.8M), and learnable base embeddings (\~42K).*
 
 ### 2.2.3 Dual-Branch Feature Extraction {#dual-branch-feature-extraction}
 
@@ -97,19 +97,19 @@ Task-Specific Classification Heads (20 independent binary classifiers)
 
 ### 2.2.4 Task-Specific Classification Heads {#task-specific-classification-heads}
 
-- 20 independent binary classifiers --- one per bioactivity task
+- 21 independent binary classifiers --- one per bioactivity task
 
 - Identical MLP architecture per head: FC(2560→256, ReLU, Dropout 0.3) → FC(256→128, ReLU, Dropout 0.3) → Output(128→2)
 
 - Masked average pooling over valid (non-padded) positions for variable-length sequence handling
 
-- \~690K parameters per head; 13.8M total across 20 heads
+- \~690K parameters per head; 13.8M total across  heads
 
 # 3. Dataset Configuration {#dataset-configuration}
 
 ## 3.1 Task Composition {#task-composition}
 
-MTL-PepPred classifies 20 peptide bioactivity types. Tasks 1-19 follow the original UniDL4BioPep benchmark splits. Task 20 (Signal Peptide) is a newly contributed dataset.
+MTL-PepPred classifies  peptide bioactivity types. Tasks 1-19 follow the original UniDL4BioPep benchmark splits. Task  (Signal Peptide) is a newly contributed dataset.
 
 | **Task ID** | **Bioactivity Type** | **Description**                                                  | **Dataset Source**                                                     |
 |-------------|----------------------|------------------------------------------------------------------|------------------------------------------------------------------------|
@@ -132,6 +132,7 @@ MTL-PepPred classifies 20 peptide bioactivity types. Tasks 1-19 follow the origi
 | 17          | Antifungal           | Antifungal activity                                              | UniDL4BioPep                                                           |
 | 18          | Antiviral            | Antiviral activity                                               | UniDL4BioPep                                                           |
 | 19          | Toxicity             | Peptide toxicity prediction (safety assessment)                  | UniDL4BioPep                                                           |
+| 19          | Antioxidant          | Antioxidant activity                                             | UniDL4BioPep                                                           |
 | 20          | Signal Peptide       | Signal peptide recognition (bioproduction support)               | Our curated dataset 2,730 pos / 2,730 neg train 683 pos / 683 neg test |
 
 *\* Signal Peptide dataset: Positive sequences retrieved from Peptipedia (22,650 entries before filtering). Negative sequences pooled from 47 publicly available peptide databases, filtered by length (4-50 aa), standard amino acid composition, and pairwise identity (CD-HIT, 90% threshold). Final: 3,413 positive + 3,413 negative sequences; 80:20 train/test split.*
