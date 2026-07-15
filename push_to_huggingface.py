@@ -1,5 +1,5 @@
 """
-Upload the MTL Peptide Classifier (22 tasks) to HuggingFace Hub.
+Upload the MTL Peptide Classifier (21 tasks) to HuggingFace Hub.
 
 Auth: requires `huggingface-cli login` or HF_TOKEN / HUGGING_FACE_HUB_TOKEN in env.
 Run:  python3 push_to_huggingface.py
@@ -48,11 +48,11 @@ tags:
 - classification
 ---
 
-# MTL Peptide Classifier (22 Tasks)
+# MTL Peptide Classifier (21 Tasks)
 
-Multi-Task Learning peptide classifier covering 22 binary peptide-activity tasks. Built on a frozen ESM-2 (650M) backbone with a parallel Transformer + CNN feature extractor and per-task heads, following a PDeepPP-inspired design.
+Multi-Task Learning peptide classifier covering 21 binary peptide-activity tasks. Built on a frozen ESM-2 (650M) backbone with a parallel Transformer + CNN feature extractor and per-task heads, following a PDeepPP-inspired design.
 
-## Held-out Test Set Performance (Averaged across 22 tasks)
+## Held-out Test Set Performance (Averaged across 21 tasks)
 
 | Metric | Value |
 |---|---|
@@ -71,7 +71,7 @@ Best Val Avg F1 (used for checkpoint selection): {results['best_val_avg_f1']*100
 
 - **Shared encoder**: frozen ESM-2 (`facebook/esm2_t33_650M_UR50D`, 650M params) + learnable base embedding, mixed at `esm_ratio=0.9`
 - **Feature extraction (parallel)**: 4-layer Transformer + CNN (kernel=7, padding=3) → concatenated to 2560-dim features
-- **Heads**: 22 binary classifiers (`2560 → 256 → 128 → 2`) with masked average pooling
+- **Heads**: 21 binary classifiers (`2560 → 256 → 128 → 2`) with masked average pooling
 - **Loss**: TIM (Threshold-Independent Multi-task) loss + label smoothing 0.1
 
 ## Tasks
@@ -97,9 +97,8 @@ Best Val Avg F1 (used for checkpoint selection): {results['best_val_avg_f1']*100
 | 17 | Antifungal | UniDL4BioPep |
 | 18 | Antiviral | UniDL4BioPep |
 | 19 | Toxicity | UniDL4BioPep |
-| 20 | Anti_inflammatory | local dataset |
+| 20 | Antioxidant | UniDL4BioPep (antioxidant_FRS) |
 | 21 | Signal_peptide | local dataset |
-| 22 | Antioxidant | UniDL4BioPep (antioxidant_FRS) |
 
 ## Usage
 
