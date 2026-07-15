@@ -1,8 +1,8 @@
 """
 MTL Peptide Classifier - PDeepPP Architecture
-All 19 peptide activity datasets trained jointly with frozen ESM-2 backbone.
+All 21 peptide activity datasets trained jointly with frozen ESM-2 backbone.
 
-This is the model architecture used for Original_MTL_19tasks_aggressive training.
+This is the model architecture used for Original_MTL_21tasks_aggressive training.
 """
 
 import torch
