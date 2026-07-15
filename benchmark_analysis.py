@@ -43,7 +43,7 @@ DEFAULT_COLOR = "#95A5A6"
 # Metrics we compare (from the CSV columns)
 METRICS = ["ACC", "AUC", "PR-AUC", "MCC"]
 
-# Tasks covered by our model (the 19 + 1 anti-inflammatory)
+# Tasks covered by our model (the 20 + 1 signal peptide)
 # Maps bioactivity name (from CSV) → our internal task name
 BIOACTIVITY_MAP = {
     "ACE inhibitory activity":                    "ACE_inhibitory",
@@ -65,7 +65,8 @@ BIOACTIVITY_MAP = {
     "Antifungal activity":                        "Antifungal",
     "Antiviral activity":                         "Antiviral",
     "Toxicity":                                   "Toxicity",
-    "Anti-inflammatory activity (our dataset)":   "Anti_inflammatory",
+    "Antioxidant":                                "Antioxidant",
+    "Signal peptide (our dataset)":   "Signal peptide",
 }
 
 
