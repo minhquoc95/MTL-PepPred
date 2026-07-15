@@ -1,19 +1,19 @@
 """
 Multi-Activity Profiling for MTL Peptide Classifier
 =====================================================
-Demonstrates the unique capability of the MTL model: predicting all 19 (or 20)
+Demonstrates the unique capability of the MTL model: predicting all 20 (or 21)
 peptide bioactivities in a SINGLE forward pass.
 
 No single-task model can do this. This script:
   1. Pools all unique peptides from all task datasets
   2. Runs ONE backbone encoding per peptide (shared ESM-2 + Transformer + CNN)
-  3. Passes the shared representation through all 19 task heads simultaneously
+  3. Passes the shared representation through all 21 task heads simultaneously
   4. Identifies "polypharmacological" peptides active in multiple tasks
   5. Produces a full analysis with heatmaps, distribution plots, and ranked tables
 
 Analyses produced:
   A. Activity prevalence per task (bar chart)
-  B. Activity co-occurrence matrix (19×19 heatmap)
+  B. Activity co-occurrence matrix (21x21 heatmap)
   C. Multi-activity peptide distribution (histogram)
   D. Top polypharmacological peptides (ranked table)
   E. Biological cluster probability profiles (radar/heatmap)
