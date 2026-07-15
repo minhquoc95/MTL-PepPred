@@ -1,8 +1,8 @@
 """
 Comprehensive MTL Evaluation Script
-Computes all metrics including PR-AUC for all 19 peptide tasks.
+Computes all metrics including PR-AUC for all 21 peptide tasks.
 
-This script evaluates a trained MTL model on all 19 UniDL4BioPep datasets
+This script evaluates a trained MTL model on all 20 UniDL4BioPep datasets + 1 Signal peptide dataset (our data)
 and generates detailed results including:
 - Accuracy (ACC)
 - ROC-AUC
@@ -17,7 +17,7 @@ and generates detailed results including:
 Usage:
     python evaluate_mtl_comprehensive.py \
         --model_dir "mtl_checkpoints" \
-        --model_name "Original_MTL_19tasks_aggressive" \
+        --model_name "Original_MTL_21tasks_aggressive" \
         --batch_size 8
 """
 
