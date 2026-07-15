@@ -1,8 +1,8 @@
 """
 MTL Training Script - PDeepPP Architecture
-Trains all 19 peptide tasks jointly with frozen ESM-2 backbone.
+Trains all 21 peptide tasks jointly with frozen ESM-2 backbone.
 
-This is the training script used for Original_MTL_19tasks_aggressive model.
+This is the training script used for Original_MTL_21tasks_aggressive model.
 The "aggressive" variant uses more aggressive hyperparameters for better performance.
 
 Usage:
