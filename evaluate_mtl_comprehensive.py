@@ -16,7 +16,7 @@ and generates detailed results including:
 
 Usage:
     python evaluate_mtl_comprehensive.py \
-        --model_dir "mtl_checkpoints" \
+        --model_dir "checkpoints/full_model/best_model" \
         --model_name "Original_MTL_21tasks_aggressive" \
         --batch_size 8
 """
@@ -159,40 +159,62 @@ def compute_all_metrics(logits, labels, task_name):
 # ============================================================================
 
 def load_mtl_model(checkpoint_dir: str, task_configs: dict, device: str):
-    """Load MTL model from checkpoint."""
+    """
+    Load MTL model from checkpoint.
 
-    checkpoint_path = Path(checkpoint_dir) / "best_model"
+    `checkpoint_dir` must point directly at a best_model/ folder
+    (e.g. checkpoints/full_model/best_model) — it is NOT appended again here.
+    """
 
-    # Create model
+    checkpoint_path = Path(checkpoint_dir)
+    backbone_path = checkpoint_path / "shared_backbone.pt"
+    heads_path = checkpoint_path / "heads.pt"
+    config_path = checkpoint_path / "ablation_config.json"
+
+    missing = [p.name for p in (backbone_path, heads_path, config_path) if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Missing checkpoint file(s) {missing} in {checkpoint_path}. "
+            f"Refusing to evaluate a partially/randomly initialized model."
+        )
+
+    # Reconstruct the exact architecture this checkpoint was trained with,
+    # instead of assuming full_model's defaults for every variant.
+    with open(config_path) as f:
+        ablation_cfg = json.load(f)
+    print(f"* Loaded ablation config from {config_path} (variant={ablation_cfg.get('variant', '?')})")
+
     model = MTLPeptideClassifier(
         task_configs=task_configs,
         hidden_dim=1280,
-        esm_ratio=0.9,
-        num_transformer_layers=4,
-        dropout=0.3
+        esm_ratio=ablation_cfg.get('esm_ratio', 0.9),
+        num_transformer_layers=ablation_cfg.get('num_transformer_layers', 4),
+        dropout=0.0,
+        use_transformer=ablation_cfg.get('use_transformer', True),
+        use_cnn=ablation_cfg.get('use_cnn', True),
+        unfreeze_esm=ablation_cfg.get('unfreeze_esm', False),
     )
 
-    # Load shared backbone
-    backbone_path = checkpoint_path / "shared_backbone.pt"
-    if backbone_path.exists():
-        backbone_state = torch.load(backbone_path, map_location=device)
-        model.base_embed.load_state_dict(backbone_state['base_embed'])
+    # Load shared backbone (only the components this architecture actually has)
+    backbone_state = torch.load(backbone_path, map_location=device)
+    model.base_embed.load_state_dict(backbone_state['base_embed'])
+    if model.use_transformer:
         model.transformer.load_state_dict(backbone_state['transformer'])
+    if model.use_cnn:
         model.cnn.load_state_dict(backbone_state['cnn'])
         model.layer_norm.load_state_dict(backbone_state['layer_norm'])
 
     # Load task heads
-    heads_path = checkpoint_path / "heads.pt"
-    if heads_path.exists():
-        heads_state = torch.load(heads_path, map_location=device)
-        for name, head in model.heads.items():
-            if name in heads_state:
-                head.load_state_dict(heads_state[name])
+    heads_state = torch.load(heads_path, map_location=device)
+    for name, head in model.heads.items():
+        if name not in heads_state:
+            raise KeyError(f"Task head '{name}' not found in {heads_path}")
+        head.load_state_dict(heads_state[name])
 
     model = model.to(device)
     model.eval()
 
-    print(f"* Loaded model from {checkpoint_dir}")
+    print(f"* Loaded model from {checkpoint_path}")
     return model
 
 
@@ -357,7 +379,8 @@ def save_detailed_results(task_metrics, model_name, output_dir):
 def main():
     parser = argparse.ArgumentParser(description="Comprehensive MTL Evaluation")
     parser.add_argument("--model_dir", type=str, required=True,
-                        help="Path to model checkpoint directory")
+                        help="Path directly to the best_model/ checkpoint folder "
+                             "(e.g. checkpoints/full_model/best_model)")
     parser.add_argument("--model_name", type=str, default="MTL_Model",
                         help="Name for this model in results")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
@@ -443,8 +466,9 @@ def main():
 
     averages = format_results_table(task_metrics, args.model_name)
 
-    # Save detailed results
-    output_dir = Path(args.model_dir) / "comprehensive_evaluation"
+    # Save detailed results alongside the variant's training results.json
+    # (model_dir is .../<variant>/best_model, so its parent is the variant dir)
+    output_dir = Path(args.model_dir).parent / "comprehensive_evaluation"
     save_detailed_results(task_metrics, args.model_name, output_dir)
 
     print("\n" + "="*120)
