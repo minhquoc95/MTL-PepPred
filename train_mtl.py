@@ -77,7 +77,6 @@ class MTLConfig:
         self.learning_rate = 1e-4
         self.weight_decay = 1e-5
         self.num_epochs = 50
-        self.warmup_epochs = 5
         self.grad_clip = 1.0
 
         # Loss
@@ -246,11 +245,10 @@ class MTLTrainer:
 
         # Scheduler
         self.total_steps = len(train_loader) * config.num_epochs
-        self.warmup_steps = len(train_loader) * config.warmup_epochs
 
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
-            T_max=self.total_steps - self.warmup_steps,
+            T_max=self.total_steps,
             eta_min=config.learning_rate * 0.01
         )
 
@@ -273,7 +271,6 @@ class MTLTrainer:
         print(f"\n* Trainer initialized:")
         print(f"  - Device: {config.device}")
         print(f"  - Total steps: {self.total_steps}")
-        print(f"  - Warmup steps: {self.warmup_steps}")
         print(f"  - TUM Loss: {config.use_tum_loss}")
 
     def train(self):
@@ -364,9 +361,7 @@ class MTLTrainer:
                 )
                 self.optimizer.step()
 
-            # Scheduler after warmup
-            if self.global_step >= self.warmup_steps:
-                self.scheduler.step()
+            self.scheduler.step()
 
             total_loss += loss.item()
             self.global_step += 1

@@ -160,7 +160,7 @@ with torch.no_grad():
 - Base model: `facebook/esm2_t33_650M_UR50D` (frozen)
 - Batch size: 16, learning rate: 1e-4, 50 epochs, dropout: 0.3
 - 3-way split per task: 80% train / 20% val (checkpoint selection) / held-out test CSV evaluated once
-- Mixed precision, gradient clipping 1.0, cosine LR with 5 warmup epochs
+- Mixed precision, gradient clipping 1.0, cosine annealing LR schedule
 - TUM loss + label smoothing 0.1
 
 ## Files
