@@ -2,6 +2,9 @@
 
 Multi-Task Learning (MTL) peptide classifier trained on UniDL4BioPep peptide activity datasets using a PDeepPP-inspired architecture with ESM-2 backbone.
 
+- **Pretrained model**: [huggingface.co/minhquoc95/MTL-PepPred](https://huggingface.co/minhquoc95/MTL-PepPred)
+- **Datasets**: [`datasets/`](datasets/) — 21 UniDL4BioPep-derived task CSVs (train/test split)
+
 ## Architecture
 
 ```
@@ -74,6 +77,7 @@ Input: Peptide Sequence
 - **`download_datasets.py`** - Dataset download utilities
 - **`process_signal_peptides.py`** - Signal peptide dataset preprocessing
 - **`SignalPeptides_dattaset_balanced.xlsx`** - Balanced signal peptide dataset
+- **`datasets/`** - 21 task CSVs (train/test), UniDL4BioPep-derived + local signal peptide data
 
 ## Training Configuration
 
@@ -156,54 +160,74 @@ python ablation_report.py --results_dir checkpoints/
 
 ### Inference
 
-```python
-from mtl_peptide_classifier import MTLPeptideClassifier, get_canonical_peptide_tasks
-from transformers import EsmTokenizer
-import torch
+Runs from a clean clone — no local `checkpoints/` or `datasets/` needed. Downloads the pretrained checkpoint from [huggingface.co/minhquoc95/MTL-PepPred](https://huggingface.co/minhquoc95/MTL-PepPred) and reconstructs the exact trained architecture from `ablation_config.json`.
 
+```bash
+pip install torch transformers huggingface_hub
+```
+
+```python
+import json
+import os
+
+import torch
+from huggingface_hub import hf_hub_download
+from transformers import EsmTokenizer
+
+from mtl_peptide_classifier import MTLPeptideClassifier
+
+REPO = "minhquoc95/MTL-PepPred"
+checkpoint_dir = "MTL-Peptide-Classifier"
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+for fname in ["heads.pt", "shared_backbone.pt", "ablation_config.json", "task_config.json"]:
+    hf_hub_download(repo_id=REPO, filename=fname, local_dir=checkpoint_dir)
+
+with open(f"{checkpoint_dir}/ablation_config.json") as f:
+    ablation_cfg = json.load(f)
+with open(f"{checkpoint_dir}/task_config.json") as f:
+    task_configs = json.load(f)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-task_configs = get_canonical_peptide_tasks()
 
 model = MTLPeptideClassifier(
     task_configs=task_configs,
     hidden_dim=1280,
-    esm_ratio=0.9,
-    num_transformer_layers=4,
-    dropout=0.3,
-    use_transformer=True,
-    use_cnn=True,
-    unfreeze_esm=False,
+    esm_ratio=ablation_cfg.get("esm_ratio", 0.9),
+    num_transformer_layers=ablation_cfg.get("num_transformer_layers", 4),
+    dropout=0.0,
+    use_transformer=ablation_cfg.get("use_transformer", True),
+    use_cnn=ablation_cfg.get("use_cnn", True),
+    unfreeze_esm=ablation_cfg.get("unfreeze_esm", False),
 )
 
-checkpoint_dir = "checkpoints/full_model/best_model"
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
 backbone = torch.load(f"{checkpoint_dir}/shared_backbone.pt", map_location=device)
-model.base_embed.load_state_dict(backbone['base_embed'])
-if 'transformer' in backbone:
-    model.transformer.load_state_dict(backbone['transformer'])
-if 'cnn' in backbone:
-    model.cnn.load_state_dict(backbone['cnn'])
-    model.layer_norm.load_state_dict(backbone['layer_norm'])
+model.base_embed.load_state_dict(backbone["base_embed"])
+if model.use_transformer:
+    model.transformer.load_state_dict(backbone["transformer"])
+if model.use_cnn:
+    model.cnn.load_state_dict(backbone["cnn"])
+    model.layer_norm.load_state_dict(backbone["layer_norm"])
 
 heads = torch.load(f"{checkpoint_dir}/heads.pt", map_location=device)
 for name, head in model.heads.items():
-    if name in heads:
-        head.load_state_dict(heads[name])
+    head.load_state_dict(heads[name])
 
 model = model.to(device).eval()
 
 sequence = "MKWVTFISLLFLFSSAYSRGVFRR"
 tokens = " ".join(list(sequence))
-inputs = tokenizer(tokens, return_tensors='pt', max_length=128, padding='max_length', truncation=True)
+inputs = tokenizer(tokens, return_tensors="pt", max_length=128, padding="max_length", truncation=True)
 
 with torch.no_grad():
     logits = model(
-        inputs['input_ids'].to(device),
-        inputs['attention_mask'].to(device),
-        task_name="Antimicrobial"
+        inputs["input_ids"].to(device),
+        inputs["attention_mask"].to(device),
+        task_name="Antimicrobial",
     )
     probs = torch.softmax(logits, dim=-1)
+    print(probs)
 ```
 
 ## Ablation Flags
@@ -235,6 +259,7 @@ Each run saves an `ablation_config.json` alongside the checkpoint for full repro
 ```
 torch>=2.0.0
 transformers>=4.30.0
+huggingface_hub
 esm
 numpy
 pandas
