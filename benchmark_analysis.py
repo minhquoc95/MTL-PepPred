@@ -31,20 +31,45 @@ import seaborn as sns
 
 
 # ── Model display config ────────────────────────────────────────────────
-OUR_MODEL   = "Our model (option 3 - esm-2)"
+# Canonical display/comparison name for our model everywhere in this script
+# (plots, legends, printed summaries, matching logic).
+OUR_MODEL = "MTL-PepPred"
+
+# The benchmark CSV's "Model" column may still contain the old raw label(s)
+# used before the model was named MTL-PepPred; these are normalized to
+# OUR_MODEL once at load time in load_benchmark(), so every downstream
+# comparison (`m == OUR_MODEL`) and plot label just works without scattered
+# per-function string replacement.
+RAW_MODEL_ALIASES = {
+    "Our model (option 3 - esm-2)": OUR_MODEL,
+}
+
 MODEL_COLORS = {
-    "Our model (option 3 - esm-2)": "#2ECC71",
-    "PDeepPP":                       "#E74C3C",
-    "UniDL4BioPep":                  "#3498DB",
-    "UniDL4BioPep-FL":               "#85C1E9",
+    OUR_MODEL:          "#2ECC71",
+    "PDeepPP":          "#E74C3C",
+    "UniDL4BioPep":     "#3498DB",
+    "UniDL4BioPep-FL":  "#85C1E9",
 }
 DEFAULT_COLOR = "#95A5A6"
 
 # Metrics we compare (from the CSV columns)
 METRICS = ["ACC", "AUC", "PR-AUC", "MCC"]
 
-# Tasks covered by our model (the 20 + 1 signal peptide)
-# Maps bioactivity name (from CSV) → our internal task name
+# Verified overall averages for MTL-PepPred to sanity-check the benchmark
+# CSV against (see verify_averages_match_manuscript()). Sourced from the
+# published HF model card (huggingface.co/minhquoc95/MTL-PepPred), which is
+# the currently-verified checkpoint. Update this if/when the manuscript's
+# Table 4 and the public checkpoint are reconciled (see TECHNICAL_
+# DOCUMENTATION_v2.md §5.1 for the reconciliation status).
+MANUSCRIPT_AVERAGES = {"ACC": 0.8737, "AUC": 0.9282, "MCC": 0.7342}
+MANUSCRIPT_AVG_TOLERANCE = 0.01  # 1 percentage point
+
+# Tasks covered by our model (21 total: 19 original UniDL4BioPep tasks +
+# Antioxidant + Signal_peptide)
+# Maps bioactivity name (from CSV) → our internal task name. Names on the
+# right must match mtl_peptide_classifier.py's PEPTIDE_TASK_PREFIXES values
+# exactly, since compute_ground_truth_multifunctional() cross-references
+# them against get_all_peptide_tasks() task names and `pred_{task}` columns.
 BIOACTIVITY_MAP = {
     "ACE inhibitory activity":                    "ACE_inhibitory",
     "DPP IV inhibitory activity":                 "DPPIV_inhibitory",
@@ -66,7 +91,7 @@ BIOACTIVITY_MAP = {
     "Antiviral activity":                         "Antiviral",
     "Toxicity":                                   "Toxicity",
     "Antioxidant":                                "Antioxidant",
-    "Signal peptide (our dataset)":   "Signal peptide",
+    "Signal peptide (our dataset)":                "Signal_peptide",
 }
 
 
@@ -86,6 +111,7 @@ def load_benchmark(csv_path: str) -> pd.DataFrame:
     # Drop rows without a Model entry
     df = df.dropna(subset=["Model"])
     df["Model"] = df["Model"].str.strip()
+    df["Model"] = df["Model"].replace(RAW_MODEL_ALIASES)
 
     # Numeric conversion (some cells have notes like "993" instead of "0.993")
     for col in ["ACC", "AUC", "PR-AUC", "BACC", "Sn", "Sp", "MCC"]:
@@ -182,8 +208,7 @@ def plot_average_ranks(avg_ranks: pd.DataFrame, output_dir: Path):
                 ax.text(v + 0.05, i, f"  {v:.2f}", va="center", fontsize=7)
 
         ax.set_yticks(range(len(col)))
-        ax.set_yticklabels([m.replace("Our model (option 3 - esm-2)", "Ours (MTL)")
-                            for m in col.index], fontsize=8)
+        ax.set_yticklabels(list(col.index), fontsize=8)
         ax.set_xlabel("Average Rank (lower = better)", fontsize=9)
         ax.set_title(f"{metric}", fontsize=11, fontweight="bold")
         ax.invert_xaxis()
@@ -191,7 +216,7 @@ def plot_average_ranks(avg_ranks: pd.DataFrame, output_dir: Path):
         ax.set_axisbelow(True)
 
     # Legend
-    patches = [mpatches.Patch(color=c, label=m.replace("Our model (option 3 - esm-2)", "Ours (MTL)"))
+    patches = [mpatches.Patch(color=c, label=m)
                for m, c in MODEL_COLORS.items() if m in avg_ranks["Model"].values]
     axes[0].legend(handles=patches, fontsize=7, loc="lower left")
 
@@ -253,8 +278,7 @@ def plot_consistency(consistency_df: pd.DataFrame, metric: str, output_dir: Path
                label="Min ACC (worst task)")
 
     ax.set_xticks(list(x))
-    labels = [m.replace("Our model (option 3 - esm-2)", "Ours\n(MTL)")
-              for m in df["Model"]]
+    labels = list(df["Model"])
     ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
     ax.set_ylabel(f"{metric} (mean ± std across tasks)", fontsize=10)
     ax.set_title(
@@ -329,7 +353,7 @@ def plot_borda(borda_summary: pd.DataFrame, output_dir: Path):
 
     ax.set_yticks(range(len(df)))
     ax.set_yticklabels(
-        [m.replace("Our model (option 3 - esm-2)", "Ours (MTL)") for m in df["Model"]],
+        [m for m in df["Model"]],
         fontsize=9
     )
     ax.set_xlabel("Total Borda Score (ACC + AUC + PR-AUC + MCC)", fontsize=10)
@@ -341,7 +365,7 @@ def plot_borda(borda_summary: pd.DataFrame, output_dir: Path):
     ax.xaxis.grid(True, alpha=0.3)
     ax.set_axisbelow(True)
 
-    patches = [mpatches.Patch(color=c, label=m.replace("Our model (option 3 - esm-2)", "Ours (MTL)"))
+    patches = [mpatches.Patch(color=c, label=m)
                for m, c in MODEL_COLORS.items() if m in df["Model"].values]
     ax.legend(handles=patches, fontsize=8, loc="lower right")
 
@@ -378,9 +402,7 @@ def plot_per_task_bars(df: pd.DataFrame, tasks: list, metric: str, output_dir: P
         models = sub["Model"].tolist()
         values = sub[metric].tolist()
         colors = [MODEL_COLORS.get(m, DEFAULT_COLOR) for m in models]
-        labels = [m.replace("Our model (option 3 - esm-2)", "Ours")
-                    .replace("UniDL4BioPep", "UniDL4")
-                  for m in models]
+        labels = [m.replace("UniDL4BioPep", "UniDL4") for m in models]
 
         bars = ax.bar(range(len(models)), values, color=colors,
                       edgecolor="white", linewidth=0.5)
@@ -410,7 +432,7 @@ def plot_per_task_bars(df: pd.DataFrame, tasks: list, metric: str, output_dir: P
 
     # Legend
     patches = [mpatches.Patch(color=MODEL_COLORS[m],
-                               label=m.replace("Our model (option 3 - esm-2)", "Ours (MTL)"))
+                               label=m)
                for m in focus_models if m in MODEL_COLORS]
     patches.append(mpatches.Patch(facecolor="white", edgecolor="gold", linewidth=2,
                                    label="Task winner"))
@@ -474,9 +496,7 @@ def plot_coverage_vs_performance(df: pd.DataFrame, tasks: list, output_dir: Path
     for _, row in cov_df.iterrows():
         color = MODEL_COLORS.get(row["Model"], DEFAULT_COLOR)
         size  = max(50, 500 / max(row["Models_Needed"], 1))  # larger = fewer models needed
-        label = (row["Model"]
-                 .replace("Our model (option 3 - esm-2)", "Ours (MTL)")
-                 .replace("UniDL4BioPep", "UniDL4"))
+        label = row["Model"].replace("UniDL4BioPep", "UniDL4")
 
         ax.scatter(row["Models_Needed"], row["Mean_ACC"],
                    s=size, color=color, alpha=0.8, edgecolors="black",
@@ -621,6 +641,61 @@ def compute_ground_truth_multifunctional(data_dir: str, output_dir: Path):
 
 
 # ============================================================================
+# VERIFICATION: MTL-PepPred averages match the manuscript
+# ============================================================================
+
+def verify_averages_match_manuscript(
+    df: pd.DataFrame,
+    expected: dict = MANUSCRIPT_AVERAGES,
+    tolerance: float = MANUSCRIPT_AVG_TOLERANCE,
+) -> bool:
+    """
+    Sanity-check that MTL-PepPred's per-task rows in the benchmark CSV
+    average out to the same overall metrics reported elsewhere (currently
+    the published HF model card; see MANUSCRIPT_AVERAGES above). Catches
+    the benchmark CSV silently drifting out of sync with the actual
+    checkpoint results (e.g. a stale per-task row, a copy-paste error, or
+    the CSV pointing at a different checkpoint than the one referenced in
+    §5.1 of TECHNICAL_DOCUMENTATION_v2.md).
+
+    Returns True if all metrics are within `tolerance` of `expected`;
+    raises AssertionError otherwise.
+    """
+    sub = df[df["Model"] == OUR_MODEL]
+    if sub.empty:
+        raise AssertionError(
+            f"No rows found for Model == {OUR_MODEL!r} in the benchmark CSV — "
+            f"check RAW_MODEL_ALIASES if the CSV uses a different label."
+        )
+
+    failures = []
+    for metric, expected_val in expected.items():
+        if metric not in sub.columns:
+            failures.append(f"{metric}: column not present in benchmark CSV")
+            continue
+        actual_val = sub[metric].dropna().mean()
+        if pd.isna(actual_val):
+            failures.append(f"{metric}: no non-null values for {OUR_MODEL}")
+            continue
+        diff = abs(actual_val - expected_val)
+        status = "OK" if diff <= tolerance else "MISMATCH"
+        print(f"    {metric:6s}: benchmark avg {actual_val:.4f} vs expected {expected_val:.4f} "
+              f"(diff {diff:.4f}, tolerance {tolerance:.4f}) [{status}]")
+        if diff > tolerance:
+            failures.append(
+                f"{metric}: benchmark avg {actual_val:.4f} vs expected {expected_val:.4f} "
+                f"(diff {diff:.4f} > tolerance {tolerance:.4f})"
+            )
+
+    if failures:
+        raise AssertionError(
+            "Benchmark CSV averages for MTL-PepPred do not match the expected "
+            "manuscript/HF-verified values:\n  " + "\n  ".join(failures)
+        )
+    return True
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -641,14 +716,19 @@ def main():
     print("=" * 70)
 
     # ── Load data ──────────────────────────────────────────────────────
-    print("\n[1/6] Loading benchmark data...")
+    print("\n[1/7] Loading benchmark data...")
     df    = load_benchmark(args.csv)
     tasks = get_benchmark_tasks(df)
     print(f"  {len(tasks)} bioactivity tasks, {df['Model'].nunique()} models")
     print(f"  Models: {', '.join(df['Model'].unique())}")
 
+    # ── Verify against manuscript ────────────────────────────────────────
+    print(f"\n[2/7] Verifying {OUR_MODEL} averages match expected values...")
+    verify_averages_match_manuscript(df)
+    print("  All metrics within tolerance.")
+
     # ── Rank analysis ──────────────────────────────────────────────────
-    print("\n[2/6] Computing average ranks...")
+    print("\n[3/7] Computing average ranks...")
     rank_df, avg_ranks = compute_average_ranks(df, tasks, METRICS)
     avg_ranks.to_csv(output_dir / "1_average_ranks.csv", index=False)
     plot_average_ranks(avg_ranks, output_dir)
@@ -660,14 +740,14 @@ def main():
         print(f"    {row['Metric']:8s}: avg rank {row['AvgRank']:.2f} over {int(row['TasksCovered'])} tasks")
 
     # ── Consistency ────────────────────────────────────────────────────
-    print("\n[3/6] Computing performance consistency...")
+    print("\n[4/7] Computing performance consistency...")
     for metric in ["ACC", "AUC", "MCC"]:
         cons = compute_consistency(df, tasks, metric)
         cons.to_csv(output_dir / f"2_consistency_{metric}.csv", index=False)
         plot_consistency(cons, metric, output_dir)
 
     # ── Borda score ────────────────────────────────────────────────────
-    print("\n[4/6] Computing composite Borda score...")
+    print("\n[5/7] Computing composite Borda score...")
     borda_detail, borda_summary = compute_borda_score(rank_df, METRICS)
     borda_summary.to_csv(output_dir / "3_borda_score.csv", index=False)
     plot_borda(borda_summary, output_dir)
@@ -679,7 +759,7 @@ def main():
               f"{row['Model']}{marker}")
 
     # ── Per-task bars ──────────────────────────────────────────────────
-    print("\n[5/6] Plotting per-task comparisons...")
+    print("\n[6/7] Plotting per-task comparisons...")
     for metric in ["ACC", "AUC", "MCC"]:
         plot_per_task_bars(df, tasks, metric, output_dir)
 
@@ -688,10 +768,10 @@ def main():
 
     # ── Ground-truth multi-functional (if data available) ──────────────
     if args.data_dir:
-        print("\n[6/6] Ground-truth multi-functional recall...")
+        print("\n[7/7] Ground-truth multi-functional recall...")
         compute_ground_truth_multifunctional(args.data_dir, output_dir)
     else:
-        print("\n[6/6] Ground-truth multi-functional: skipped (use --data_dir to enable)")
+        print("\n[7/7] Ground-truth multi-functional: skipped (use --data_dir to enable)")
 
     print(f"\n{'='*70}")
     print(f"  All outputs saved to: {output_dir}")
