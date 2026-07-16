@@ -20,7 +20,7 @@ VARIANTS = [
     "full_model",
     "no_cnn",
     "no_transformer",
-    "no_tim",
+    "no_tum",
     "esm_ratio_1p0",
     "esm_ratio_0p5",
     "unfreeze_esm",

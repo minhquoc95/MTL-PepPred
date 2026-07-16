@@ -404,13 +404,13 @@ def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
 
 
 # ============================================================================
-# TIM LOSS (Threshold-independent Multi-task loss)
+# TUM LOSS (Task-Uncertainty Multi-task loss)
 # ============================================================================
 
-class TIMLoss(nn.Module):
+class TUMLoss(nn.Module):
     """
-    Threshold-Independent Multi-task Loss for imbalanced datasets.
-    Reference: https://arxiv.org/abs/2008.10599
+    Task-Uncertainty Multi-task Loss for imbalanced datasets.
+    Reference: Kendall et al., 2018 - https://arxiv.org/abs/1705.07115
 
     Uses learnable task-specific weights (log variances) to balance
     losses across tasks with different scales and difficulties.

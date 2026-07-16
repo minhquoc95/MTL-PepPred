@@ -13,7 +13,7 @@ Aggressive Training Configuration:
     - Batch size: 16
     - Epochs: 50 (aggressive - more epochs)
     - Dropout: 0.3
-    - TIM Loss: Enabled
+    - TUM Loss: Enabled
     - Label smoothing: 0.1
     - Gradient clipping: 1.0
     - Mixed precision: Enabled
@@ -41,7 +41,7 @@ from mtl_peptide_classifier import (
     MTLPeptideClassifier,
     MultiTaskDataLoader,
     PeptideDataset,
-    TIMLoss,
+    TUMLoss,
     get_all_peptide_tasks
 )
 
@@ -81,7 +81,7 @@ class MTLConfig:
         self.grad_clip = 1.0
 
         # Loss
-        self.use_tim_loss = True
+        self.use_tum_loss = True
         self.label_smoothing = 0.1
 
         # System
@@ -109,8 +109,8 @@ class MTLConfig:
             parts.append("unfreeze_esm")
         if abs(self.esm_ratio - 0.9) > 1e-6:
             parts.append(f"esm_ratio_{self.esm_ratio:.1f}".replace(".", "p"))
-        if not self.use_tim_loss:
-            parts.append("no_tim")
+        if not self.use_tum_loss:
+            parts.append("no_tum")
         if self.num_transformer_layers != 4:
             parts.append(f"transformer_{self.num_transformer_layers}L")
         return "_".join(parts) if parts else "full_model"
@@ -236,7 +236,7 @@ class MTLTrainer:
         )
 
         # Loss
-        # reduction='none' needed for per-sample TIM loss weighting
+        # reduction='none' needed for per-sample TUM loss weighting
         self.criterion = nn.CrossEntropyLoss(
             label_smoothing=config.label_smoothing,
             reduction='none'
@@ -245,10 +245,10 @@ class MTLTrainer:
             label_smoothing=config.label_smoothing
         )
 
-        if config.use_tim_loss:
-            self.tim_loss = TIMLoss(len(train_loader.task_names))
+        if config.use_tum_loss:
+            self.tum_loss = TUMLoss(len(train_loader.task_names))
         else:
-            self.tim_loss = None
+            self.tum_loss = None
 
         # Mixed precision
         self.scaler = GradScaler('cuda') if config.mixed_precision and config.device == 'cuda' else None
@@ -263,14 +263,14 @@ class MTLTrainer:
             'learning_rate': []
         }
 
-        # Task name to index mapping for TIM loss
+        # Task name to index mapping for TUM loss
         self.task_to_idx = {name: i for i, name in enumerate(train_loader.task_names)}
 
         print(f"\n* Trainer initialized:")
         print(f"  - Device: {config.device}")
         print(f"  - Total steps: {self.total_steps}")
         print(f"  - Warmup steps: {self.warmup_steps}")
-        print(f"  - TIM Loss: {config.use_tim_loss}")
+        print(f"  - TUM Loss: {config.use_tum_loss}")
 
     def train(self):
         """Main training loop."""
@@ -328,15 +328,15 @@ class MTLTrainer:
             # Forward
             with autocast('cuda', enabled=self.scaler is not None):
                 logits = self.model(input_ids, attention_mask, task_name)
-                if self.tim_loss is not None:
-                    # Per-sample losses for TIM weighting
+                if self.tum_loss is not None:
+                    # Per-sample losses for TUM weighting
                     per_sample_losses = self.criterion(logits, labels)
                     task_idx = self.task_to_idx[task_name]
                     task_idx_tensor = torch.full(
                         (len(labels),), task_idx,
                         dtype=torch.long, device=self.config.device
                     )
-                    loss = self.tim_loss(per_sample_losses, task_idx_tensor)
+                    loss = self.tum_loss(per_sample_losses, task_idx_tensor)
                 else:
                     loss = self.criterion_mean(logits, labels)
 
@@ -440,7 +440,7 @@ class MTLTrainer:
                 'unfreeze_esm': self.model.unfreeze_esm,
                 'esm_ratio': self.model.esm_ratio,
                 'feature_dim': self.model.feature_dim,
-                'use_tim_loss': self.config.use_tim_loss,
+                'use_tum_loss': self.config.use_tum_loss,
                 'label_smoothing': self.config.label_smoothing,
                 'num_transformer_layers': self.config.num_transformer_layers,
             }
@@ -477,7 +477,7 @@ class MTLTrainer:
                 'batch_size': self.config.batch_size,
                 'num_epochs': self.config.num_epochs,
                 'dropout': self.config.dropout,
-                'use_tim_loss': self.config.use_tim_loss,
+                'use_tum_loss': self.config.use_tum_loss,
                 'label_smoothing': self.config.label_smoothing,
                 'use_transformer': self.config.use_transformer,
                 'use_cnn': self.config.use_cnn,
@@ -518,8 +518,8 @@ Ablation Study Examples:
   Transformer only (2 layers):
       python train_mtl.py --no_cnn --transformer_layers 2
 
-  Without TIM loss:
-      python train_mtl.py --no_tim
+  Without TUM loss:
+      python train_mtl.py --no_tum
 
   Unfrozen ESM-2 backbone:
       python train_mtl.py --unfreeze_esm --lr 1e-5
@@ -544,7 +544,7 @@ Ablation Study Examples:
                         help="Fraction of train data held out for validation/checkpoint selection (default 0.1)")
 
     # Loss ablations
-    parser.add_argument("--no_tim", action="store_true", help="Disable TIM loss")
+    parser.add_argument("--no_tum", action="store_true", help="Disable TUM loss")
     parser.add_argument("--label_smoothing", type=float, default=0.1,
                         help="Label smoothing factor (default 0.1; set 0.0 to disable)")
 
@@ -580,7 +580,7 @@ Ablation Study Examples:
     config.val_split = args.val_split
 
     # Loss
-    config.use_tim_loss = not args.no_tim
+    config.use_tum_loss = not args.no_tum
     config.label_smoothing = args.label_smoothing
 
     # Architecture ablations
@@ -618,7 +618,7 @@ Ablation Study Examples:
     print(f"  - ESM-2:               {'Unfrozen (fine-tune)' if config.unfreeze_esm else 'Frozen'}")
     print(f"  - ESM ratio:           {config.esm_ratio}")
     print(f"\nLoss:")
-    print(f"  - TIM Loss:            {'ON' if config.use_tim_loss else 'OFF (ablated)'}")
+    print(f"  - TUM Loss:            {'ON' if config.use_tum_loss else 'OFF (ablated)'}")
     print(f"  - Label smoothing:     {config.label_smoothing}")
 
     # Get task configurations
