@@ -12,6 +12,8 @@ from pathlib import Path
 
 from huggingface_hub import HfApi
 
+from mtl_peptide_classifier import get_canonical_peptide_tasks
+
 # Configuration
 REPO_ID = "minhquoc95/MTL-PepPred"
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints" / "full_model" / "best_model"
@@ -169,6 +171,7 @@ with torch.no_grad():
 - `shared_backbone.pt` — base embedding, Transformer, CNN, LayerNorm
 - `ablation_config.json` — architecture configuration for reproducibility
 - `test_results.json` — held-out test metrics (per task + averages)
+- `task_config.json` — task_name → {{num_classes, csv_prefix}} for all 21 tasks
 - `mtl_peptide_classifier.py` — model code
 
 ## Requirements
@@ -218,6 +221,10 @@ def upload_to_huggingface():
     test_results_src = RESULTS_DIR / "test_results.json"
     shutil.copy(test_results_src, upload_dir / "test_results.json")
     print(f"  + test_results.json")
+
+    task_config_path = upload_dir / "task_config.json"
+    task_config_path.write_text(json.dumps(get_canonical_peptide_tasks(), indent=2))
+    print(f"  + task_config.json")
 
     code_src = Path(__file__).parent / "mtl_peptide_classifier.py"
     shutil.copy(code_src, upload_dir / "mtl_peptide_classifier.py")
