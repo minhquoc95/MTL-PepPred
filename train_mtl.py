@@ -541,7 +541,7 @@ Ablation Study Examples:
     parser.add_argument("--dropout", type=float, default=0.3, help="Dropout rate")
     parser.add_argument("--device", type=str, default=None, help="Device to use")
     parser.add_argument("--val_split", type=float, default=0.2,
-                        help="Fraction of train data held out for validation/checkpoint selection (default 0.1)")
+                        help="Fraction of train data held out for validation/checkpoint selection (default 0.2)")
 
     # Loss ablations
     parser.add_argument("--no_tum", action="store_true", help="Disable TUM loss")
@@ -636,8 +636,8 @@ Ablation Study Examples:
     tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
 
     # Create datasets — 3-way split following UniDL4BioPep methodology:
-    #   train_datasets : 90% of *_train.csv  — model learns from this
-    #   val_datasets   : 10% of *_train.csv  — used only to select best checkpoint
+    #   train_datasets : 80% of *_train.csv  — model learns from this
+    #   val_datasets   : 20% of *_train.csv  — used only to select best checkpoint
     #   test_datasets  : *_test.csv           — touched once after training for final reporting
     train_datasets = {}
     val_datasets = {}
