@@ -108,7 +108,7 @@ from huggingface_hub import hf_hub_download
 import torch
 from transformers import EsmTokenizer
 
-from mtl_peptide_classifier import MTLPeptideClassifier, get_all_peptide_tasks
+from mtl_peptide_classifier import MTLPeptideClassifier, get_canonical_peptide_tasks
 
 REPO = "{REPO_ID}"
 checkpoint_dir = "MTL-Peptide-Classifier"
@@ -118,7 +118,7 @@ for fname in ["heads.pt", "shared_backbone.pt", "ablation_config.json"]:
     hf_hub_download(repo_id=REPO, filename=fname, local_dir=checkpoint_dir)
 
 tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-task_configs = get_all_peptide_tasks("datasets")  # needs local datasets/ dir for task names
+task_configs = get_canonical_peptide_tasks()  # no local dataset directory needed
 
 model = MTLPeptideClassifier(
     task_configs=task_configs,
