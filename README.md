@@ -103,7 +103,7 @@ Input: Peptide Sequence
 python train_mtl.py --batch_size 16 --lr 1e-4 --epochs 50 --dropout 0.3
 
 # Without TUM loss
-python train_mtl.py --no_tim
+python train_mtl.py --no_tum
 
 # Custom label smoothing
 python train_mtl.py --label_smoothing 0.05
@@ -215,7 +215,7 @@ with torch.no_grad():
 | `--unfreeze_esm` | Allow ESM-2 gradients (fine-tuning) | Off |
 | `--esm_ratio` | ESM-2 weight in embedding mix (0–1) | 0.9 |
 | `--transformer_layers` | Number of shared Transformer layers | 4 |
-| `--no_tim` | Disable TUM multi-task loss | Off |
+| `--no_tum` | Disable TUM multi-task loss | Off |
 | `--label_smoothing` | Label smoothing factor | 0.1 |
 | `--ablation_name` | Custom checkpoint directory name | auto |
 
