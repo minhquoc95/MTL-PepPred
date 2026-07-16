@@ -4,9 +4,14 @@ Reads results from all ablation variant checkpoints and prints a comparison tabl
 
 Usage:
     python ablation_report.py
+    python ablation_report.py --results_dir checkpoints_run2
+    python ablation_report.py --csv_out per_task.csv --json_out per_task.json
 """
 
+import argparse
+import csv
 import json
+import sys
 from pathlib import Path
 
 # Ablation variants to collect (checkpoint subfolder name)
@@ -22,14 +27,14 @@ VARIANTS = [
 ]
 
 
-def load_variant(variant_name):
+def load_variant(variant_name, results_dir):
     """
     Load metrics from a trained ablation variant's results.json.
     All variants (including the baseline full_model) read the same
     best-validation-epoch metrics produced by train_mtl.py's
     evaluate_all_tasks(), so the comparison table is apples-to-apples.
     """
-    results_path = Path("checkpoints") / variant_name / "results.json"
+    results_path = Path(results_dir) / variant_name / "results.json"
     if not results_path.exists():
         return None
     with open(results_path) as f:
@@ -49,9 +54,9 @@ def load_variant(variant_name):
     }
 
 
-def load_ablation_config(variant_name):
+def load_ablation_config(variant_name, results_dir):
     """Load ablation config saved alongside checkpoint."""
-    cfg_path = Path("checkpoints") / variant_name / "best_model" / "ablation_config.json"
+    cfg_path = Path(results_dir) / variant_name / "best_model" / "ablation_config.json"
     if not cfg_path.exists():
         return {}
     with open(cfg_path) as f:
@@ -72,7 +77,7 @@ def print_report(rows, baseline_row):
 
     print()
     print("=" * len(header))
-    print("  ABLATION STUDY - MTL Peptide Classifier (20 Tasks)")
+    print("  ABLATION STUDY - MTL Peptide Classifier (21 Tasks)")
     print("=" * len(header))
     print(header)
     print(sep)
@@ -104,30 +109,39 @@ def print_report(rows, baseline_row):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Ablation Study Report Generator")
+    parser.add_argument("--results_dir", type=str, default="checkpoints",
+                        help="Directory containing per-variant checkpoint subfolders (default: checkpoints)")
+    parser.add_argument("--csv_out", type=str, default=None,
+                        help="Optional path to write the per-task ACC%% breakdown as CSV")
+    parser.add_argument("--json_out", type=str, default=None,
+                        help="Optional path to write the per-task ACC%% breakdown as JSON")
+    args = parser.parse_args()
+    results_dir = Path(args.results_dir)
+
     rows = []
 
-    # Load baseline (full_model), from the same source/metrics as every other variant
-    baseline = load_variant("full_model")
-    if baseline:
-        baseline["variant"] = "full_model (baseline)"
-        rows.append(baseline)
-    else:
-        print("[WARN] Baseline (checkpoints/full_model/results.json) not found.")
-        baseline = {"avg_acc": 0, "avg_auc": 0, "avg_mcc": 0}
+    # Baseline (full_model) is required — every delta in the report is computed
+    # against it, so a missing/corrupt file must hard-fail, not silently
+    # default to a zero baseline that would make every delta meaningless.
+    baseline_path = results_dir / "full_model" / "results.json"
+    baseline = load_variant("full_model", results_dir)
+    if not baseline:
+        print(f"[ERROR] Required baseline file not found or empty: {baseline_path}")
+        print("        Run train_mtl.py for the full_model variant first.")
+        sys.exit(1)
+    baseline["variant"] = "full_model (baseline)"
+    rows.append(baseline)
 
     # Load each ablation variant
     for v in VARIANTS:
         if v == "full_model":
             continue  # already loaded as baseline
-        row = load_variant(v)
+        row = load_variant(v, results_dir)
         if row:
             rows.append(row)
         else:
             print(f"[SKIP] {v}: results.json not found (not yet trained)")
-
-    if not rows:
-        print("No results found. Run ablation variants first.")
-        return
 
     print_report(rows, baseline)
 
@@ -141,7 +155,7 @@ def main():
 
     # Per-task ACC for every variant, all read from the same results.json format
     for v in VARIANTS:
-        results_path = Path("checkpoints") / v / "results.json"
+        results_path = results_dir / v / "results.json"
         if not results_path.exists():
             continue
         with open(results_path) as f:
@@ -152,7 +166,7 @@ def main():
     if task_data:
         completed_variants = [
             v for v in VARIANTS
-            if (Path("checkpoints") / v / "results.json").exists()
+            if (results_dir / v / "results.json").exists()
         ]
         col_w = 10
         header2 = f"{'Task':<22}" + "".join(f"{v[:col_w]:>{col_w}}" for v in completed_variants)
@@ -165,6 +179,23 @@ def main():
                 row_str += f"{val:>{col_w}.1f}" if val is not None else f"{'N/A':>{col_w}}"
             print(row_str)
         print()
+
+        if args.csv_out:
+            with open(args.csv_out, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Task"] + completed_variants)
+                for task in sorted(task_data.keys()):
+                    writer.writerow(
+                        [task] + [task_data[task].get(v, "") for v in completed_variants]
+                    )
+            print(f"[OK] Per-task CSV written to {args.csv_out}")
+
+        if args.json_out:
+            with open(args.json_out, "w") as f:
+                json.dump(task_data, f, indent=2)
+            print(f"[OK] Per-task JSON written to {args.json_out}")
+    elif args.csv_out or args.json_out:
+        print("[WARN] No per-task data available — skipping CSV/JSON export.")
 
 
 if __name__ == "__main__":
