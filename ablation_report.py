@@ -9,12 +9,6 @@ Usage:
 import json
 from pathlib import Path
 
-# ============================================================================
-# BASELINE: from comprehensive evaluation (full model, 50 epochs)
-# ============================================================================
-
-BASELINE_EVAL = Path("checkpoints/comprehensive_evaluation/MTL_20tasks_detailed_results.json")
-
 # Ablation variants to collect (checkpoint subfolder name)
 VARIANTS = [
     "full_model",
@@ -28,28 +22,13 @@ VARIANTS = [
 ]
 
 
-def load_baseline():
-    """Load baseline metrics from comprehensive evaluation."""
-    if not BASELINE_EVAL.exists():
-        return None
-    with open(BASELINE_EVAL) as f:
-        r = json.load(f)
-    m = r["metrics"]
-    tasks = list(m.keys())
-    return {
-        "variant": "full_model (baseline)",
-        "avg_acc":   sum(m[t]["ACC"]    for t in tasks) / len(tasks) * 100,
-        "avg_auc":   sum(m[t]["AUC"]    for t in tasks) / len(tasks) * 100,
-        "avg_prauc": sum(m[t]["PR_AUC"] for t in tasks) / len(tasks) * 100,
-        "avg_mcc":   sum(m[t]["MCC"]    for t in tasks) / len(tasks) * 100,
-        "avg_f1":    sum(m[t]["F1"]     for t in tasks) / len(tasks) * 100,
-        "num_tasks": len(tasks),
-        "source": "comprehensive_evaluation",
-    }
-
-
 def load_variant(variant_name):
-    """Load metrics from a trained ablation variant's results.json."""
+    """
+    Load metrics from a trained ablation variant's results.json.
+    All variants (including the baseline full_model) read the same
+    best-validation-epoch metrics produced by train_mtl.py's
+    evaluate_all_tasks(), so the comparison table is apples-to-apples.
+    """
     results_path = Path("checkpoints") / variant_name / "results.json"
     if not results_path.exists():
         return None
@@ -63,7 +42,6 @@ def load_variant(variant_name):
         "variant": variant_name,
         "avg_acc":   sum(fm[t]["accuracy"] for t in tasks) / len(tasks) * 100,
         "avg_auc":   sum(fm[t]["auc"]      for t in tasks) / len(tasks) * 100,
-        "avg_prauc": sum(fm[t].get("pr_auc", fm[t]["auc"]) for t in tasks) / len(tasks) * 100,
         "avg_mcc":   sum(fm[t]["mcc"]      for t in tasks) / len(tasks) * 100,
         "avg_f1":    sum(fm[t]["f1"]       for t in tasks) / len(tasks) * 100,
         "num_tasks": len(tasks),
@@ -89,7 +67,7 @@ def delta(val, baseline):
 
 def print_report(rows, baseline_row):
     """Print formatted comparison table."""
-    header = f"{'Variant':<28} {'ACC':>7} {'AUC':>7} {'PR-AUC':>8} {'MCC':>7} {'F1':>7}  {'dACC':>7} {'dAUC':>7} {'dMCC':>7}"
+    header = f"{'Variant':<28} {'ACC':>7} {'AUC':>7} {'MCC':>7} {'F1':>7}  {'dACC':>7} {'dAUC':>7} {'dMCC':>7}"
     sep = "-" * len(header)
 
     print()
@@ -109,7 +87,6 @@ def print_report(rows, baseline_row):
             f"{marker}{row['variant']:<26} "
             f"{row['avg_acc']:>6.2f}% "
             f"{row['avg_auc']:>6.2f}% "
-            f"{row['avg_prauc']:>7.2f}% "
             f"{row['avg_mcc']:>6.2f}% "
             f"{row['avg_f1']:>6.2f}%  "
             f"{d_acc:>7} "
@@ -129,12 +106,13 @@ def print_report(rows, baseline_row):
 def main():
     rows = []
 
-    # Load baseline
-    baseline = load_baseline()
+    # Load baseline (full_model), from the same source/metrics as every other variant
+    baseline = load_variant("full_model")
     if baseline:
+        baseline["variant"] = "full_model (baseline)"
         rows.append(baseline)
     else:
-        print("[WARN] Baseline comprehensive evaluation not found.")
+        print("[WARN] Baseline (checkpoints/full_model/results.json) not found.")
         baseline = {"avg_acc": 0, "avg_auc": 0, "avg_mcc": 0}
 
     # Load each ablation variant
@@ -161,17 +139,8 @@ def main():
     # Collect per-task data
     task_data = {}
 
-    # Baseline per-task
-    if BASELINE_EVAL.exists():
-        with open(BASELINE_EVAL) as f:
-            b = json.load(f)
-        for task, m in b["metrics"].items():
-            task_data.setdefault(task, {})["full_model"] = m["ACC"] * 100
-
-    # Variant per-task
+    # Per-task ACC for every variant, all read from the same results.json format
     for v in VARIANTS:
-        if v == "full_model":
-            continue
         results_path = Path("checkpoints") / v / "results.json"
         if not results_path.exists():
             continue
@@ -181,9 +150,9 @@ def main():
             task_data.setdefault(task, {})[v] = m["accuracy"] * 100
 
     if task_data:
-        completed_variants = ["full_model"] + [
-            v for v in VARIANTS if v != "full_model"
-            and (Path("checkpoints") / v / "results.json").exists()
+        completed_variants = [
+            v for v in VARIANTS
+            if (Path("checkpoints") / v / "results.json").exists()
         ]
         col_w = 10
         header2 = f"{'Task':<22}" + "".join(f"{v[:col_w]:>{col_w}}" for v in completed_variants)
