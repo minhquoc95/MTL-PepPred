@@ -72,7 +72,7 @@ Best Val Avg F1 (used for checkpoint selection): {results['best_val_avg_f1']*100
 - **Shared encoder**: frozen ESM-2 (`facebook/esm2_t33_650M_UR50D`, 650M params) + learnable base embedding, mixed at `esm_ratio=0.9`
 - **Feature extraction (parallel)**: 4-layer Transformer + CNN (kernel=7, padding=3) → concatenated to 2560-dim features
 - **Heads**: 21 binary classifiers (`2560 → 256 → 128 → 2`) with masked average pooling
-- **Loss**: TIM (Threshold-Independent Multi-task) loss + label smoothing 0.1
+- **Loss**: TUM (Task-Uncertainty Multi-task) loss + label smoothing 0.1
 
 ## Tasks
 
@@ -161,7 +161,7 @@ with torch.no_grad():
 - Batch size: 16, learning rate: 1e-4, 50 epochs, dropout: 0.3
 - 3-way split per task: 80% train / 20% val (checkpoint selection) / held-out test CSV evaluated once
 - Mixed precision, gradient clipping 1.0, cosine LR with 5 warmup epochs
-- TIM loss + label smoothing 0.1
+- TUM loss + label smoothing 0.1
 
 ## Files
 
