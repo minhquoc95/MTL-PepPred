@@ -172,7 +172,6 @@ MTL-PepPred classifies  peptide bioactivity types. Tasks 1-19 follow the origina
 | **Weight Decay**            | 1e-5      | L2 regularisation to prevent overfitting                    |
 | **Gradient Clipping**       | 1.0       | Stabilises training, prevents gradient explosion            |
 | **Label Smoothing**         | 0.1       | Reduces overconfidence, improves calibration                |
-| **Warmup Epochs**           | 5         | Gradual learning rate ramp-up for stability                 |
 | **Mixed Precision**         | FP16      | Reduces GPU memory usage, accelerates training              |
 | **ESM-2 Weight (alpha)**    | 0.9       | Balances pre-trained ESM-2 features vs learnable embeddings |
 | **Loss Weight Init (s\^t)** | 0         | Equal initial task priority across all 20 tasks             |
@@ -206,7 +205,7 @@ MTL-PepPred classifies  peptide bioactivity types. Tasks 1-19 follow the origina
 
 - Optimizer: AdamW (Adam with decoupled weight decay; Loshchilov & Hutter, 2019)
 
-- Learning Rate Schedule: Cosine annealing with 5-epoch linear warmup
+- Learning Rate Schedule: Cosine annealing
 
 - Gradient Clipping: Max norm = 1.0 for training stability
 

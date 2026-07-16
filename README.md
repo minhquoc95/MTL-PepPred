@@ -86,7 +86,7 @@ Input: Peptide Sequence
 | Epochs | 50 |
 | Dropout | 0.3 |
 | Weight Decay | 1e-5 |
-| Warmup Epochs | 5 |
+| LR Schedule | Cosine annealing |
 | Gradient Clipping | 1.0 |
 | Label Smoothing | 0.1 |
 | Mixed Precision | Enabled |
