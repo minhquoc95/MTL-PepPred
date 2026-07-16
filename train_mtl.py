@@ -259,6 +259,8 @@ class MTLTrainer:
         self.current_epoch = 0
         self.global_step = 0
         self.best_avg_f1 = 0.0
+        self.best_epoch = 0
+        self.best_val_metrics = {}
         self.history = {
             'train_loss': [],
             'val_metrics': [],
@@ -404,6 +406,8 @@ class MTLTrainer:
         # Save best model
         if avg_f1 > self.best_avg_f1:
             self.best_avg_f1 = avg_f1
+            self.best_epoch = self.current_epoch + 1
+            self.best_val_metrics = val_metrics
 
             variant = self.config.get_variant_name()
             checkpoint_dir = Path(self.config.output_dir) / variant / "best_model"
@@ -460,13 +464,14 @@ class MTLTrainer:
         with open(output_dir / "training_history.json", 'w') as f:
             json.dump(self.history, f, indent=2, default=str)
 
-        # Save final metrics
-        final_metrics = self.history['val_metrics'][-1] if self.history['val_metrics'] else {}
+        # Save best-epoch metrics (not final epoch — model may overfit after its best checkpoint)
+        final_metrics = self.best_val_metrics
 
         # Create summary
         summary = {
             'variant': variant,
             'best_avg_f1': float(self.best_avg_f1),
+            'best_epoch': self.best_epoch,
             'final_epoch': self.current_epoch + 1,
             'final_metrics': {
                 task: {k: float(v) for k, v in metrics.items()}
