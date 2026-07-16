@@ -328,10 +328,41 @@ class MultiTaskDataLoader:
 # TASK CONFIGURATION (21 Peptide Activities)
 # ============================================================================
 
-def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
+# Canonical task list (csv_prefix -> task_name). This is the single source of
+# truth for all 21 tasks — independent of any local dataset directory — so
+# inference code can reconstruct every classifier head (e.g. after loading
+# heads.pt from a checkpoint) without needing the training CSVs on disk.
+PEPTIDE_TASK_PREFIXES = {
+    "1__ACE_inhibitory_activity": "ACE_inhibitory",
+    "2__DPPIV_inhibitory_activity": "DPPIV_inhibitory",
+    "3__Bitter": "Bitter",
+    "4__Umami": "Umami",
+    "5__Antimicrobial_activity": "Antimicrobial",
+    "6__Antimalarial_activity-main": "Antimalarial",
+    "6__Antimalarial_activity-alternative": "Antimalarial_alt",
+    "7__Quorum_sensing_activity": "Quorum_sensing",
+    "8__ACP_Anticancer_activity-main": "Anticancer",
+    "8__ACP_Anticancer_activity-alternative": "Anticancer_alt",
+    "9__Anti-MRSA_strains_activity": "AntiMRSA",
+    "10__TTCA": "TTCA",
+    "11__BBP_Blood-Brain_Barrier_Peptides": "BBP",
+    "12__APP__Anti-parasitic": "Anti_parasitic",
+    "13_NeuroPred": "NeuroPred",
+    "14__antibacterial_AB": "Antibacterial",
+    "15__Antifungal_AF": "Antifungal",
+    "16__AV_Antiviral": "Antiviral",
+    "17__Toxicity_2021_Dataset": "Toxicity",
+    "19__Signal_peptides": "Signal_peptide",
+    "21__Antioxidant_FRS": "Antioxidant",
+}
+
+
+def get_canonical_peptide_tasks() -> Dict[str, Dict]:
     """
-    Auto-detect all 21 peptide tasks from UniDL4BioPep data directory.
-    Returns task_configs for MTL model.
+    Return the fixed 21-task config (all tasks are binary), independent of
+    any dataset directory. Use this for inference / head reconstruction when
+    the training CSVs aren't available locally (e.g. loading a checkpoint
+    downloaded from HuggingFace).
 
     21 Tasks:
     1. ACE_inhibitory - ACE inhibitory activity
@@ -356,39 +387,26 @@ def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
     20. Antioxidant - Antioxidant activity
     21. Signal_peptide - Signal peptide prediction
     """
-    data_path = Path(data_dir)
-
-    # Define task mappings (includes both main and alternative datasets)
-    task_mappings = {
-        "1__ACE_inhibitory_activity": "ACE_inhibitory",
-        "2__DPPIV_inhibitory_activity": "DPPIV_inhibitory",
-        "3__Bitter": "Bitter",
-        "4__Umami": "Umami",
-        "5__Antimicrobial_activity": "Antimicrobial",
-        "6__Antimalarial_activity-main": "Antimalarial",
-        "6__Antimalarial_activity-alternative": "Antimalarial_alt",
-        "7__Quorum_sensing_activity": "Quorum_sensing",
-        "8__ACP_Anticancer_activity-main": "Anticancer",
-        "8__ACP_Anticancer_activity-alternative": "Anticancer_alt",
-        "9__Anti-MRSA_strains_activity": "AntiMRSA",
-        "10__TTCA": "TTCA",
-        "11__BBP_Blood-Brain_Barrier_Peptides": "BBP",
-        "12__APP__Anti-parasitic": "Anti_parasitic",
-        "13_NeuroPred": "NeuroPred",
-        "14__antibacterial_AB": "Antibacterial",
-        "15__Antifungal_AF": "Antifungal",
-        "16__AV_Antiviral": "Antiviral",
-        "17__Toxicity_2021_Dataset": "Toxicity",
-        "19__Signal_peptides": "Signal_peptide",
-        "21__Antioxidant_FRS": "Antioxidant"
+    return {
+        task_name: {'num_classes': 2, 'csv_prefix': prefix}
+        for prefix, task_name in PEPTIDE_TASK_PREFIXES.items()
     }
+
+
+def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
+    """
+    Auto-detect all 21 peptide tasks from UniDL4BioPep data directory,
+    reading each CSV to determine its actual class count. Use this for
+    training, where the dataset directory is available.
+    """
+    data_path = Path(data_dir)
 
     task_configs = {}
     for csv_file in data_path.glob("*_train.csv"):
         prefix = csv_file.stem.replace("_train", "")
 
-        if prefix in task_mappings:
-            task_name = task_mappings[prefix]
+        if prefix in PEPTIDE_TASK_PREFIXES:
+            task_name = PEPTIDE_TASK_PREFIXES[prefix]
 
             # Read full file to correctly detect classes (sampling can miss minority class)
             df = pd.read_csv(csv_file)

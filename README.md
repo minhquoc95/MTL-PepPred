@@ -157,12 +157,12 @@ python ablation_report.py --results_dir checkpoints/
 ### Inference
 
 ```python
-from mtl_peptide_classifier import MTLPeptideClassifier, get_all_peptide_tasks
+from mtl_peptide_classifier import MTLPeptideClassifier, get_canonical_peptide_tasks
 from transformers import EsmTokenizer
 import torch
 
 tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-task_configs = get_all_peptide_tasks("datasets")
+task_configs = get_canonical_peptide_tasks()
 
 model = MTLPeptideClassifier(
     task_configs=task_configs,
