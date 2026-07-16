@@ -74,7 +74,6 @@ Input: Peptide Sequence
 - **`train_mtl.py`** - Training script with ablation study CLI
 - **`evaluate_mtl_comprehensive.py`** - Comprehensive evaluation script
 - **`ablation_report.py`** - Ablation study reporting and comparison
-- **`download_datasets.py`** - Dataset download utilities
 - **`process_signal_peptides.py`** - Signal peptide dataset preprocessing
 - **`SignalPeptides_dattaset_balanced.xlsx`** - Balanced signal peptide dataset
 - **`datasets/`** - 21 task CSVs (train/test), UniDL4BioPep-derived + local signal peptide data
