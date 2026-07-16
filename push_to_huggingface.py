@@ -105,22 +105,24 @@ Best Val Avg F1 (used for checkpoint selection): {results['best_val_avg_f1']*100
 ## Usage
 
 ```python
+import json
 import os
 from huggingface_hub import hf_hub_download
 import torch
 from transformers import EsmTokenizer
 
-from mtl_peptide_classifier import MTLPeptideClassifier, get_canonical_peptide_tasks
+from mtl_peptide_classifier import MTLPeptideClassifier
 
 REPO = "{REPO_ID}"
 checkpoint_dir = "MTL-Peptide-Classifier"
 os.makedirs(checkpoint_dir, exist_ok=True)
 
-for fname in ["heads.pt", "shared_backbone.pt", "ablation_config.json"]:
+for fname in ["heads.pt", "shared_backbone.pt", "ablation_config.json", "task_config.json"]:
     hf_hub_download(repo_id=REPO, filename=fname, local_dir=checkpoint_dir)
 
 tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-task_configs = get_canonical_peptide_tasks()  # no local dataset directory needed
+with open(f"{{checkpoint_dir}}/task_config.json") as f:
+    task_configs = json.load(f)  # no local dataset directory needed
 
 model = MTLPeptideClassifier(
     task_configs=task_configs,
@@ -170,8 +172,8 @@ with torch.no_grad():
 - `heads.pt` — per-task classifier heads
 - `shared_backbone.pt` — base embedding, Transformer, CNN, LayerNorm
 - `ablation_config.json` — architecture configuration for reproducibility
+- `task_config.json` — canonical 21-task config (name, csv_prefix, num_classes) for rebuilding all heads
 - `test_results.json` — held-out test metrics (per task + averages)
-- `task_config.json` — task_name → {{num_classes, csv_prefix}} for all 21 tasks
 - `mtl_peptide_classifier.py` — model code
 
 ## Requirements
