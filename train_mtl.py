@@ -218,9 +218,28 @@ class MTLTrainer:
         self.val_datasets = val_datasets
         self.config = config
 
-        # Optimizer
+        # Loss
+        # reduction='none' needed for per-sample TUM loss weighting
+        self.criterion = nn.CrossEntropyLoss(
+            label_smoothing=config.label_smoothing,
+            reduction='none'
+        )
+        self.criterion_mean = nn.CrossEntropyLoss(
+            label_smoothing=config.label_smoothing
+        )
+
+        if config.use_tum_loss:
+            self.tum_loss = TUMLoss(len(train_loader.task_names)).to(config.device)
+        else:
+            self.tum_loss = None
+
+        # Optimizer (includes TUM log-variance parameters so they're actually learned)
+        trainable_params = list(self.model.parameters())
+        if self.tum_loss is not None:
+            trainable_params += list(self.tum_loss.parameters())
+
         self.optimizer = optim.AdamW(
-            self.model.parameters(),
+            trainable_params,
             lr=config.learning_rate,
             weight_decay=config.weight_decay
         )
@@ -234,21 +253,6 @@ class MTLTrainer:
             T_max=self.total_steps - self.warmup_steps,
             eta_min=config.learning_rate * 0.01
         )
-
-        # Loss
-        # reduction='none' needed for per-sample TUM loss weighting
-        self.criterion = nn.CrossEntropyLoss(
-            label_smoothing=config.label_smoothing,
-            reduction='none'
-        )
-        self.criterion_mean = nn.CrossEntropyLoss(
-            label_smoothing=config.label_smoothing
-        )
-
-        if config.use_tum_loss:
-            self.tum_loss = TUMLoss(len(train_loader.task_names))
-        else:
-            self.tum_loss = None
 
         # Mixed precision
         self.scaler = GradScaler('cuda') if config.mixed_precision and config.device == 'cuda' else None
@@ -414,6 +418,7 @@ class MTLTrainer:
             torch.save({
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
+                'tum_loss_state_dict': self.tum_loss.state_dict() if self.tum_loss is not None else None,
                 'epoch': self.current_epoch,
                 'best_avg_f1': self.best_avg_f1,
                 'val_metrics': val_metrics
