@@ -21,7 +21,7 @@ Analyses produced:
 
 Usage:
     python multi_activity_profiling.py \\
-        --model_dir checkpoints \\
+        --model_dir checkpoints/full_model \\
         --output_dir results/multi_activity \\
         --batch_size 8 \\
         --prob_threshold 0.5
@@ -45,7 +45,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-from mtl_peptide_classifier import MTLPeptideClassifier, get_all_peptide_tasks
+from mtl_peptide_classifier import MTLPeptideClassifier, get_canonical_peptide_tasks
 
 
 # ============================================================================
@@ -73,7 +73,7 @@ TASK_GROUPS = {
         "Bitter", "Umami"
     ],
     "Signaling /\nOther": [
-        "Quorum_sensing", "Toxicity"
+        "Quorum_sensing", "Toxicity", "Antioxidant", "Signal_peptide"
     ],
 }
 
@@ -98,7 +98,8 @@ TASK_SHORT = {
     "Antifungal":       "AFung",
     "Antiviral":        "AV",
     "Toxicity":         "Tox",
-    "Anti_inflammatory": "AInf",
+    "Antioxidant":      "AOx",
+    "Signal_peptide":   "SigPep",
 }
 
 # Group color palette
@@ -149,6 +150,17 @@ class SequenceOnlyDataset(Dataset):
 # ============================================================================
 
 def load_model(checkpoint_dir: str, task_configs: dict, device: str):
+    best = Path(checkpoint_dir) / "best_model"
+
+    backbone_path = best / "shared_backbone.pt"
+    heads_path = best / "heads.pt"
+    missing = [p.name for p in (backbone_path, heads_path) if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"Missing checkpoint file(s) {missing} in {best}. "
+            f"Refusing to profile a partially/randomly initialized model."
+        )
+
     model = MTLPeptideClassifier(
         task_configs=task_configs,
         hidden_dim=1280,
@@ -157,28 +169,19 @@ def load_model(checkpoint_dir: str, task_configs: dict, device: str):
         dropout=0.3,
     )
 
-    best = Path(checkpoint_dir) / "best_model"
+    state = torch.load(backbone_path, map_location=device)
+    model.base_embed.load_state_dict(state["base_embed"])
+    model.transformer.load_state_dict(state["transformer"])
+    model.cnn.load_state_dict(state["cnn"])
+    model.layer_norm.load_state_dict(state["layer_norm"])
+    print(f"  Loaded shared backbone from {backbone_path}")
 
-    backbone_path = best / "shared_backbone.pt"
-    if backbone_path.exists():
-        state = torch.load(backbone_path, map_location=device)
-        model.base_embed.load_state_dict(state["base_embed"])
-        model.transformer.load_state_dict(state["transformer"])
-        model.cnn.load_state_dict(state["cnn"])
-        model.layer_norm.load_state_dict(state["layer_norm"])
-        print(f"  Loaded shared backbone from {backbone_path}")
-    else:
-        print(f"  [WARNING] Backbone not found at {backbone_path}")
-
-    heads_path = best / "heads.pt"
-    if heads_path.exists():
-        heads_state = torch.load(heads_path, map_location=device)
-        for name, head in model.heads.items():
-            if name in heads_state:
-                head.load_state_dict(heads_state[name])
-        print(f"  Loaded {len(model.heads)} task heads from {heads_path}")
-    else:
-        print(f"  [WARNING] Heads not found at {heads_path}")
+    heads_state = torch.load(heads_path, map_location=device)
+    for name, head in model.heads.items():
+        if name not in heads_state:
+            raise KeyError(f"Task head '{name}' not found in {heads_path}")
+        head.load_state_dict(heads_state[name])
+    print(f"  Loaded {len(model.heads)} task heads from {heads_path}")
 
     model = model.to(device)
     model.eval()
@@ -683,7 +686,7 @@ def report_efficiency(timing, n_sequences, n_tasks, output_dir):
 
 def main():
     parser = argparse.ArgumentParser(description="MTL Multi-Activity Profiling")
-    parser.add_argument("--model_dir",      type=str, default="checkpoints",
+    parser.add_argument("--model_dir",      type=str, default="checkpoints/full_model",
                         help="Directory containing best_model/ subfolder")
     parser.add_argument("--data_dir",       type=str, default=None,
                         help="Path to datasets/ directory (default: auto-detect)")
@@ -725,8 +728,8 @@ def main():
     print(f"  Threshold   : {args.prob_threshold}")
 
     # ── Task configs ───────────────────────────────────────────────────
-    print("\n[1/6] Loading task configurations...")
-    task_configs = get_all_peptide_tasks(data_dir)
+    print("\n[1/6] Loading canonical task configuration...")
+    task_configs = get_canonical_peptide_tasks()
     task_names   = sorted(task_configs.keys())
     print(f"  {len(task_names)} tasks: {', '.join(task_names)}")
 
