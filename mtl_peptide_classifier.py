@@ -325,15 +325,15 @@ class MultiTaskDataLoader:
 
 
 # ============================================================================
-# TASK CONFIGURATION (20 Peptide Activities)
+# TASK CONFIGURATION (21 Peptide Activities)
 # ============================================================================
 
 def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
     """
-    Auto-detect all 20 peptide tasks from UniDL4BioPep data directory.
+    Auto-detect all 21 peptide tasks from UniDL4BioPep data directory.
     Returns task_configs for MTL model.
 
-    20 Tasks:
+    21 Tasks:
     1. ACE_inhibitory - ACE inhibitory activity
     2. DPPIV_inhibitory - DPPIV inhibitory activity
     3. Bitter - Bitter taste peptides
@@ -353,7 +353,8 @@ def get_all_peptide_tasks(data_dir: str) -> Dict[str, Dict]:
     17. Antifungal - Antifungal peptides
     18. Antiviral - Antiviral peptides
     19. Toxicity - Toxicity prediction
-    20. Anti_inflammatory - Anti-inflammatory peptides
+    20. Antioxidant - Antioxidant activity
+    21. Signal_peptide - Signal peptide prediction
     """
     data_path = Path(data_dir)
 
