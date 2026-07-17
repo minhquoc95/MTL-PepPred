@@ -227,38 +227,9 @@ MTL-PepPred classifies 21 peptide bioactivity types. Tasks 1-19 follow the origi
 
 11. Checkpoint Selection: Save model checkpoint achieving highest average F1-score across all 21 tasks on a held-out validation set (20% of the training data, randomly sampled with fixed seed 42), following the UniDL4BioPep benchmark evaluation protocol (Du et al., 2023). The test set is used exclusively for final one-shot evaluation after training is complete.
 
-# 5. Performance Results {#performance-results}
+# 5. Technical Implementation Details {#technical-implementation-details}
 
-## 5.1 Overall Performance Metrics {#overall-performance-metrics}
-
-Held-out test set performance for the current 21-task checkpoint, verified against the published model card at [huggingface.co/minhquoc95/MTL-PepPred](https://huggingface.co/minhquoc95/MTL-PepPred):
-
-| **Metric**              | **Value**  | **Interpretation**                                           |
-|--------------------------|-----------|-----------------------------------------------------------------|
-| Average Accuracy (ACC)  | **87.37%** | Correct classification rate across all 21 tasks              |
-| Average F1              | **84.80%** | Harmonic mean of precision/recall                             |
-| Average AUC-ROC         | **92.82%** | Area under ROC curve --- excellent discrimination             |
-| Average MCC             | **73.42%** | Matthews Correlation Coefficient --- balanced class measure   |
-
-Best Val Avg F1 (used for checkpoint selection, 20% validation split): 83.43%
-
-*Note: PR-AUC is not reported for this checkpoint. `train_mtl.py`'s validation/test evaluation (which `test_results.json` and the HF model card are built from) only tracks ACC/F1/AUC/MCC; `evaluate_mtl_comprehensive.py` computes PR-AUC but has not yet been re-run against this checkpoint.*
-
-## 5.2 Top Performing Tasks {#top-performing-tasks}
-
-*Pending regeneration.* The previous per-task ranking table (Anti-MRSA, Antimalarial main, Signal Peptide, ...) was measured on a 20-task checkpoint trained before the test-set-leakage fix in checkpoint selection (see Appendix, item 6) and before the Antioxidant task (21st) was added, so it does not describe the model reported in §5.1. Re-run `evaluate_mtl_comprehensive.py` on the current checkpoint and repopulate this table from its per-task output rather than carrying the old 20-task numbers forward.
-
-## 5.3 Performance Distribution Analysis {#performance-distribution-analysis}
-
-*Pending regeneration* for the same reason as §5.2 — the high/moderate/challenging task buckets previously listed here were derived from the pre-leakage-fix, 20-task run and are not verified for the current 21-task checkpoint.
-
-## 5.4 Ablation Study Summary {#ablation-study-summary}
-
-*Removed — unverified.* The ablation table previously here (ESM ratio, No Transformer, No CNN, etc.) was measured on the pre-leakage-fix 20-task pipeline and has not been re-run since the checkpoint-selection fix or the addition of the Antioxidant task. Re-run the ablation variants with the current `train_mtl.py` (see README "Ablation Studies") and regenerate this table with `ablation_report.py --results_dir checkpoints/` once complete; do not carry the old numbers forward, as they were produced under a since-fixed, leakage-biased checkpoint-selection methodology.
-
-# 6. Technical Implementation Details {#technical-implementation-details}
-
-## 6.1 Sequence Encoding {#sequence-encoding}
+## 5.1 Sequence Encoding {#sequence-encoding}
 
 - Tokenisation: Space-separated amino acids (e.g., ACDEFGH → A C D E F G H)
 
@@ -266,13 +237,13 @@ Best Val Avg F1 (used for checkpoint selection, 20% validation split): 83.43%
 
 - Vocabulary: Standard 20 amino acids + ESM-2 special tokens (padding, mask, etc.)
 
-## 6.2 Variable-Length Handling {#variable-length-handling}
+## 5.2 Variable-Length Handling {#variable-length-handling}
 
 - Attention Masking: Binary masks distinguish valid tokens from padding
 
 - Masked Average Pooling: h_pooled = Σ(H_i × M_i) / Σ(M_i), where M is the binary mask
 
-## 6.3 Memory Optimisation {#memory-optimisation}
+## 5.3 Memory Optimisation {#memory-optimisation}
 
 - Mixed Precision Training: FP16 for forward pass, FP32 for gradient accumulation
 
@@ -280,17 +251,15 @@ Best Val Avg F1 (used for checkpoint selection, 20% validation split): 83.43%
 
 - Checkpointing: Saves shared encoder weights + 21 task-specific head weights separately
 
-## 6.4 Computational Requirements {#computational-requirements}
+## 5.4 Computational Requirements {#computational-requirements}
 
 - GPU: RTX 4060 Ti 16GB (minimum 8GB VRAM recommended)
 
-- Training Time: \~9 hours for 50 epochs across 21 tasks (\~140K+ total sequences) --- *figure carried over from the 20-task run; not re-measured after the Antioxidant task was added*
-
 - Inference Speed: \~25 sequences/second at batch size 16
 
-# 7. Model Deployment {#model-deployment}
+# 6. Model Deployment {#model-deployment}
 
-## 7.1 Checkpoint Structure {#checkpoint-structure}
+## 6.1 Checkpoint Structure {#checkpoint-structure}
 
 > checkpoints/best_model/
 >
@@ -304,7 +273,7 @@ Best Val Avg F1 (used for checkpoint selection, 20% validation split): 83.43%
 >
 > └── results.json \# Final test set performance (all 21 tasks)
 
-## 7.2 Inference Pipeline {#inference-pipeline}
+## 6.2 Inference Pipeline {#inference-pipeline}
 
 12. Load Pre-trained Components: ESM-2 tokeniser and MTL-PepPred checkpoint
 
@@ -322,9 +291,9 @@ Best Val Avg F1 (used for checkpoint selection, 20% validation split): 83.43%
 
 Multi-task inference: A single forward pass through the shared encoder produces embeddings used by all 21 task heads simultaneously, enabling screening of all 21 bioactivities in a single computation.
 
-# 8. Key Contributions {#key-contributions}
+# 7. Key Contributions {#key-contributions}
 
-## 8.1 Scientific Contributions {#scientific-contributions}
+## 7.1 Scientific Contributions {#scientific-contributions}
 
 19. Most comprehensive unified MTL framework for peptide bioactivity prediction: 21 tasks spanning food enzyme inhibition (ACE, DPPIV), taste modulation (bitter, umami), antimicrobial preservation, and safety assessment
 
@@ -334,7 +303,7 @@ Multi-task inference: A single forward pass through the shared encoder produces 
 
 22. Signal Peptide Dataset: New curated benchmark dataset of 3,413 positive and 3,413 negative sequences from 47 sources, achieving 100% AUC across all evaluated architectures and relevant to computational identification of secretion signals for recombinant bioproduction of food-grade bioactive peptide ingredients
 
-## 8.2 Engineering Contributions {#engineering-contributions}
+## 7.2 Engineering Contributions {#engineering-contributions}
 
 23. Modular hard-parameter sharing architecture: New bioactivity tasks can be added by training an additional head without retraining shared components
 
@@ -344,52 +313,32 @@ Multi-task inference: A single forward pass through the shared encoder produces 
 
 26. Reproducibility: Complete training history, checkpoint management, and publicly released datasets
 
-## 8.3 Performance Summary {#performance-summary}
+## 7.3 Performance Summary {#performance-summary}
 
-27. Achieves 87.37% average ACC and 92.82% average AUC across 21 diverse tasks (verified against the published HF model card; see §5.1)
+27. Achieves 87.37% average ACC and 92.82% average AUC across 21 diverse tasks (verified against the published HF model card)
 
-28. *Pending re-verification:* comparison against UniDL4BioPep per-task results (previously "matches or exceeds on 12/20 tasks; highest AUC on 9/20 tasks") was measured on the pre-leakage-fix 20-task run and has not been recomputed for the current 21-task checkpoint.
+# 8. Future Directions {#future-directions}
 
-29. *Pending re-verification:* comparison against dedicated task-specific tools (previously "surpasses on 12/16 tasks with available comparisons") is likewise unverified for the current checkpoint.
+## 8.1 Potential Enhancements {#potential-enhancements}
 
-30. *Pending re-verification:* the largest-gain claim (previously "Antimalarial-main, +9.0% AUC vs UniDL4BioPep") depended on the same pre-leakage-fix run and has not been recomputed.
+28. Lightweight task-specific adapter modules (e.g., LoRA) for selective performance improvement on priority tasks without retraining shared components
 
-# 9. Future Directions {#future-directions}
+29. Integration of gastrointestinal stability predictors and bioavailability modelling to bridge sequence-level prediction with functional food efficacy
 
-## 9.1 Potential Enhancements {#potential-enhancements}
+30. Extension of benchmark with additional food-specific bioactivities: antioxidant, anti-inflammatory, opioid activities
 
-31. Lightweight task-specific adapter modules (e.g., LoRA) for selective performance improvement on priority tasks without retraining shared components
+31. Multi-label classification framework to model multifunctional peptides (e.g., lactoferricin sequences with concurrent antimicrobial and antihypertensive properties)
 
-32. Integration of gastrointestinal stability predictors and bioavailability modelling to bridge sequence-level prediction with functional food efficacy
+## 8.2 Research Opportunities {#research-opportunities}
 
-33. Extension of benchmark with additional food-specific bioactivities: antioxidant, anti-inflammatory, opioid activities
+32. Few-shot learning for rapid extension to novel bioactivity types with minimal experimental data
 
-34. Multi-label classification framework to model multifunctional peptides (e.g., lactoferricin sequences with concurrent antimicrobial and antihypertensive properties)
+33. Interpretability tools: Saliency mapping and amino acid position importance analysis for structure-activity relationship insights
 
-## 9.2 Research Opportunities {#research-opportunities}
+34. Hierarchical task clustering exploiting biological taxonomy (e.g., antimicrobial → antibacterial / antifungal / antiviral)
 
-35. Few-shot learning for rapid extension to novel bioactivity types with minimal experimental data
+35. Sequence generation: Generative modelling for de novo food bioactive peptide design
 
-36. Interpretability tools: Saliency mapping and amino acid position importance analysis for structure-activity relationship insights
+# 9. Conclusion {#conclusion}
 
-37. Hierarchical task clustering exploiting biological taxonomy (e.g., antimicrobial → antibacterial / antifungal / antiviral)
-
-38. Sequence generation: Generative modelling for de novo food bioactive peptide design
-
-# 10. Conclusion {#conclusion}
-
-MTL-PepPred demonstrates the effectiveness of multi-task learning with frozen pre-trained backbones for comprehensive peptide bioactivity prediction. The framework achieves 87.37% average accuracy and 92.82% mean AUC across 21 diverse peptide classification tasks using a single unified deployable model (§5.1), establishing a robust computational foundation for food-derived bioactive peptide discovery. *The CNN-branch ablation claim from v1.0/early v2.0 drafts (−31.3% ACC without CNN) has been removed pending re-verification on the current 21-task, leakage-fixed pipeline (§5.4) — it should not be cited until re-run.* Model unification reduces storage requirements by approximately 95% relative to 21 independent single-task models, with a single forward pass enabling simultaneous screening of all 21 bioactivity categories.
-
-# Appendix: Change Log from v1.0 {#appendix-change-log-from-v1.0}
-
-| **\#** | **Item**               | **v1.0 (old)**                              | **v2.0 (corrected)**                                      |
-|--------|------------------------|---------------------------------------------|-----------------------------------------------------------|
-| **1**  | Task 20                | Anti-inflammatory (14,400/3,600 train/test) | Removed. Replaced by Task 20 = Antioxidant (UniDL4BioPep antioxidant_FRS) and Task 21 = Signal Peptide (2,730/683 train/test per class) |
-| **2**  | Task 9 / Task 10 order | 9=Anticancer Main, 10=Anticancer Alt        | 9=Anticancer Alt, 10=Anticancer Main                      |
-| **3**  | Task 15 name           | Neuroprotective                             | Neuropeptide                                              |
-| **4**  | Trainable parameters   | \~12M                                       | \~104.7M (verified breakdown in Table 2.2; an intermediate draft's \~52M figure undercounted the shared Transformer) |
-| **5**  | Loss function name     | TIM Loss                                    | TUM Loss (Kendall et al., 2018)                           |
-| **6**  | Checkpoint selection   | test set F1-score (methodologically incorrect) | validation F1-score (20% of training data, seed 42); test set reserved for final one-shot evaluation |
-| **7**  | GPU                    | RTX 4070 Ti 16GB                            | RTX 4060 Ti 16GB                                          |
-| **8**  | Task count             | 20 tasks                                    | 21 tasks (Antioxidant + Signal Peptide added; Anti-inflammatory removed) |
-| **9**  | Overall ACC / AUC      | 88.89% / 94.10%                             | 87.37% / 92.82% (§5.1; verified against current 21-task checkpoint on HuggingFace) |
+MTL-PepPred demonstrates the effectiveness of multi-task learning with frozen pre-trained backbones for comprehensive peptide bioactivity prediction. The framework achieves 87.37% average accuracy and 92.82% mean AUC across 21 diverse peptide classification tasks using a single unified deployable model, establishing a robust computational foundation for food-derived bioactive peptide discovery. Model unification reduces storage requirements by approximately 95% relative to 21 independent single-task models, with a single forward pass enabling simultaneous screening of all 21 bioactivity categories.
