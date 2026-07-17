@@ -143,7 +143,7 @@ MTL-PepPred classifies 21 peptide bioactivity types. Tasks 1-19 follow the origi
 
 - Required Columns: sequence (single-letter amino acid code), label (0 or 1)
 
-- Naming Convention: {task_id}\_\_{task_name}\_peptides\_{train,test}.csv
+- Naming Convention: {task_id}\_{original_dataset_name}\_{train,test}.csv --- the task_id prefix is fixed and used by `mtl_peptide_classifier.py`'s task mapping, but `original_dataset_name` is not a fixed template; it is inherited verbatim from each task's source dataset (e.g. `10__TTCA_train.csv`, `19__Signal_peptides_test.csv`, `21__Antioxidant_FRS_train.csv`)
 
 - Split Ratio: 80% training, 20% testing (stratified by label)
 
@@ -261,17 +261,23 @@ MTL-PepPred classifies 21 peptide bioactivity types. Tasks 1-19 follow the origi
 
 ## 6.1 Checkpoint Structure {#checkpoint-structure}
 
-> checkpoints/best_model/
+> checkpoints/\<variant\>/ \# e.g. checkpoints/full_model/
 >
-> ├── checkpoint.pt \# Full model state (shared encoder + all heads)
+> ├── best_model/
 >
-> ├── heads.pt \# Task-specific head weights (21 heads)
+> │   ├── checkpoint.pt \# Full model + optimizer + TUM loss state (resume/inspect)
 >
-> ├── shared_backbone.pt \# Shared Transformer + CNN encoder weights
+> │   ├── heads.pt \# Task-specific head weights (21 heads)
+>
+> │   ├── shared_backbone.pt \# Shared Transformer + CNN encoder weights
+>
+> │   └── ablation_config.json \# Architecture flags for this checkpoint (use_transformer, use_cnn, esm_ratio, ...) — used to reconstruct the exact architecture at inference/evaluation time
 >
 > ├── training_history.json \# Training metrics per epoch
 >
-> └── results.json \# Final test set performance (all 21 tasks)
+> ├── results.json \# Best-validation-epoch summary (config + best val metrics)
+>
+> └── test_results.json \# Final one-shot held-out test set performance (all 21 tasks) — source for the published HF model card
 
 ## 6.2 Inference Pipeline {#inference-pipeline}
 
@@ -313,32 +319,28 @@ Multi-task inference: A single forward pass through the shared encoder produces 
 
 26. Reproducibility: Complete training history, checkpoint management, and publicly released datasets
 
-## 7.3 Performance Summary {#performance-summary}
-
-27. Achieves 87.37% average ACC and 92.82% average AUC across 21 diverse tasks (verified against the published HF model card)
-
 # 8. Future Directions {#future-directions}
 
 ## 8.1 Potential Enhancements {#potential-enhancements}
 
-28. Lightweight task-specific adapter modules (e.g., LoRA) for selective performance improvement on priority tasks without retraining shared components
+27. Lightweight task-specific adapter modules (e.g., LoRA) for selective performance improvement on priority tasks without retraining shared components
 
-29. Integration of gastrointestinal stability predictors and bioavailability modelling to bridge sequence-level prediction with functional food efficacy
+28. Integration of gastrointestinal stability predictors and bioavailability modelling to bridge sequence-level prediction with functional food efficacy
 
-30. Extension of benchmark with additional food-specific bioactivities: antioxidant, anti-inflammatory, opioid activities
+29. Extension of benchmark with additional food-specific bioactivities: antioxidant, anti-inflammatory, opioid activities
 
-31. Multi-label classification framework to model multifunctional peptides (e.g., lactoferricin sequences with concurrent antimicrobial and antihypertensive properties)
+30. Multi-label classification framework to model multifunctional peptides (e.g., lactoferricin sequences with concurrent antimicrobial and antihypertensive properties)
 
 ## 8.2 Research Opportunities {#research-opportunities}
 
-32. Few-shot learning for rapid extension to novel bioactivity types with minimal experimental data
+31. Few-shot learning for rapid extension to novel bioactivity types with minimal experimental data
 
-33. Interpretability tools: Saliency mapping and amino acid position importance analysis for structure-activity relationship insights
+32. Interpretability tools: Saliency mapping and amino acid position importance analysis for structure-activity relationship insights
 
-34. Hierarchical task clustering exploiting biological taxonomy (e.g., antimicrobial → antibacterial / antifungal / antiviral)
+33. Hierarchical task clustering exploiting biological taxonomy (e.g., antimicrobial → antibacterial / antifungal / antiviral)
 
-35. Sequence generation: Generative modelling for de novo food bioactive peptide design
+34. Sequence generation: Generative modelling for de novo food bioactive peptide design
 
 # 9. Conclusion {#conclusion}
 
-MTL-PepPred demonstrates the effectiveness of multi-task learning with frozen pre-trained backbones for comprehensive peptide bioactivity prediction. The framework achieves 87.37% average accuracy and 92.82% mean AUC across 21 diverse peptide classification tasks using a single unified deployable model, establishing a robust computational foundation for food-derived bioactive peptide discovery. Model unification reduces storage requirements by approximately 95% relative to 21 independent single-task models, with a single forward pass enabling simultaneous screening of all 21 bioactivity categories.
+MTL-PepPred demonstrates the effectiveness of multi-task learning with frozen pre-trained backbones for comprehensive peptide bioactivity prediction, using a single unified deployable model to establish a robust computational foundation for food-derived bioactive peptide discovery. Model unification reduces storage requirements by approximately 95% relative to 21 independent single-task models, with a single forward pass enabling simultaneous screening of all 21 bioactivity categories.
