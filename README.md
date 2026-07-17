@@ -248,7 +248,7 @@ Each run saves an `ablation_config.json` alongside the checkpoint for full repro
 
 - **Ablatable Architecture**: Transformer and CNN branches can be independently disabled via CLI
 - **ESM-2 Backbone**: Frozen by default; can be unfrozen for fine-tuning
-- **TUM Loss**: Threshold-Independent Multi-task loss with learnable per-task log variances
+- **TUM Loss**: Task-Uncertainty Multi-task Loss with learnable per-task log variances
 - **Masked Pooling**: Handles variable-length peptide sequences
 - **Auto Variant Naming**: Checkpoint directories named automatically from active ablation flags
 - **Windows Compatible**: DataLoader `num_workers` auto-set to 0 on Windows
