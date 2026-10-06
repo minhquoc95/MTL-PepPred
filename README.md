@@ -2,9 +2,7 @@
 
 Multi-Task Learning (MTL) peptide classifier trained on UniDL4BioPep peptide activity datasets using a PDeepPP-inspired architecture with ESM-2 backbone.
 
-Predicts 21 peptide bioactivities with one set of stored weights and one protein language
-model pass per sequence, reducing stored parameters by ~95% relative to 21 separate
-single-task models. Joint training helps some tasks and harms others: against single-task
+Predicts 21 peptide bioactivities with one set of stored weights, reducing stored parameters by ~95% relative to 21 single-task models. Joint training helps some tasks and harms others: against single-task
 models of identical architecture, 12 of 21 improve by AUC and 9 decline.
 
 - **Pretrained model**: [huggingface.co/minhquoc95/MTL-PepPred](https://huggingface.co/minhquoc95/MTL-PepPred)
