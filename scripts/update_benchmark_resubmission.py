@@ -2,28 +2,22 @@
 Build the resubmission benchmark workbook from the 5-seed B1 runs.
 
 Input
-  ../Benchmark Summary - new.xlsx          original Table 4 (single run, seed 42)
-  ../results/test_results_seed_{42,1,2,3,4}.json
+  results/Benchmark Summary - new.xlsx          original Table 4 (single run, seed 42)
+  results/C0_seed{42,1,2,3,4}_pertask_metrics.csv
 
 Output
-  ../Benchmark Summary - resubmission.xlsx
+  results/Benchmark Summary - resubmission.xlsx
     Sheet1          same layout as the original; MTL-PepPred rows replaced by the
                     5-seed mean, SD in columns L-R. Baseline rows untouched.
     MTL_per_seed    per-task, per-seed raw values
-    Notes           what changed and what is still pending
+    Notes           what changed
 
-MTL-PepPred metrics per seed:
-  ACC, AUC, MCC, Sn (= recall)  : read directly from test_results_seed_*.json
-  Sp, BACC                       : derived exactly from ACC, precision, recall
-                                   (no rounding, confusion matrix reconstructed)
-  PR-AUC                         : from C0_seed{42,1,2,3,4}_pertask_metrics.csv (B6,
-                                   2026-09-21) -- AMP-off inference on the seed 1-4 weights,
-                                   which were never deleted (only checkpoint.pt was), so this
-                                   is the exact trained models, not a retrain. sklearn
-                                   average_precision_score, matching the manuscript's own
-                                   Table 4 method (see the C0 changelog entries).
+MTL-PepPred metrics per seed: ACC, AUC, PR-AUC, BACC, Sn, Sp and MCC are all read from
+C0_seed*_pertask_metrics.csv (exp_seed_pertask_metrics.py: AMP-off inference, PR-AUC =
+average precision), so every column of Table 4 comes from the same five evaluations.
+Means and sample SDs (ddof=1) are stored at full precision and displayed at 2 dp.
 """
-import json
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -64,45 +58,17 @@ TASK_MAP = {
 METRICS = ["ACC", "AUC", "PR-AUC", "BACC", "Sn", "Sp", "MCC"]
 
 
-def derive_sp(acc, prec, rec):
-    """Specificity from accuracy, precision and recall.
-
-    With prevalence pi = P/(P+N):  FP/N_total = pi*rec*(1-prec)/prec
-    acc = 1 - pi + pi*rec*(2*prec-1)/prec  ->  solve for pi, then Sp.
-    Returns (sp, pi).
-    """
-    if prec == 0 or rec == 0:
-        return np.nan, np.nan
-    k = rec * (2 * prec - 1) / prec
-    pi = (1 - acc) / (1 - k)
-    fp_rate_total = pi * rec * (1 - prec) / prec
-    sp = 1 - fp_rate_total / (1 - pi)
-    return sp, pi
-
-
 def load_seed_metrics():
-    """ACC/AUC/MCC/Sn from test_results_seed_*.json (train_mtl.py's own one-shot AMP-on
-    evaluation); PR-AUC from C0_seed*_pertask_metrics.csv (B6, AMP-off, sklearn
-    average_precision_score -- the seed-1..4 weights were never deleted, only checkpoint.pt
-    was, so this is inference on the exact same models, not a retrain)."""
-    import csv as _csv
-
-    pr_auc_by_seed_task = {}
+    """(task, seed) -> every Table 4 metric, from C0_seed*_pertask_metrics.csv."""
+    rows = {}
     for s in SEEDS:
         with open(RESULTS / f"C0_seed{s}_pertask_metrics.csv", newline="", encoding="utf-8") as f:
-            for row in _csv.DictReader(f):
-                pr_auc_by_seed_task[(row["task"], s)] = float(row["PR_AUC"])
-
-    rows = {}  # (task, seed) -> dict
-    for s in SEEDS:
-        d = json.loads((RESULTS / f"test_results_seed_{s}.json").read_text())
-        for task, m in d["test_metrics"].items():
-            sp, pi = derive_sp(m["accuracy"], m["precision"], m["recall"])
-            rows[(task, s)] = {
-                "ACC": m["accuracy"], "AUC": m["auc"], "MCC": m["mcc"],
-                "Sn": m["recall"], "Sp": sp, "BACC": (m["recall"] + sp) / 2,
-                "PR-AUC": pr_auc_by_seed_task.get((task, s), np.nan), "prevalence": pi,
-            }
+            for r in csv.DictReader(f):
+                rows[(r["task"], s)] = {
+                    "ACC": float(r["ACC"]), "AUC": float(r["AUC"]), "PR-AUC": float(r["PR_AUC"]),
+                    "BACC": float(r["BACC"]), "Sn": float(r["Sn"]), "Sp": float(r["Sp"]),
+                    "MCC": float(r["MCC"]), "prevalence": int(r["n_pos"]) / int(r["n"]),
+                }
     return rows
 
 
@@ -151,17 +117,35 @@ def main():
             if mean is None:
                 c.value = None
             else:
-                c.value = round(mean, 2)
-                ws.cell(r, sd_cols[met], round(sd, 2))
+                # stored at full precision, displayed at 2 dp: anything reading this sheet
+                # and rounding again (Figure 3 prints 1 dp) must not round a rounded value
+                c.value = round(mean, 6)
+                c.number_format = "0.00"
+                sdc = ws.cell(r, sd_cols[met])
+                sdc.value, sdc.number_format = round(sd, 6), "0.00"
             c.fill = hl
         ws.cell(r, col["Reference"], "This work (mean of 5 seeds)")
         ws.cell(r, note_col, "mean of 5 runs")
         replaced += 1
     assert replaced == 21, replaced
 
+    # The UniDL4BioPep antioxidant row in the source sheet is shifted by one column from AUC
+    # onwards (it read AUC = PR-AUC = 80.4, MCC = 87.2). Restore it, checking the bad values
+    # first so the fix can never land on the wrong row.
+    current_bio, fixed = None, 0
+    for r in range(2, ws.max_row + 1):
+        current_bio = ws.cell(r, col["Bioactivity"]).value or current_bio
+        if current_bio == "Antioxidant activity" and (ws.cell(r, col["Model"]).value or "").strip() == "UniDL4BioPep":
+            bad = {m: ws.cell(r, col[m]).value for m in ("AUC", "PR-AUC", "MCC")}
+            assert bad == {"AUC": 80.4, "PR-AUC": 80.4, "MCC": 87.2}, bad
+            for m, v in {"AUC": 87.2, "PR-AUC": None, "BACC": 80.45, "Sn": 81, "Sp": 79.9, "MCC": 60.8}.items():
+                ws.cell(r, col[m]).value = v  # ws.cell(r, c, None) would leave the old value
+            fixed += 1
+    assert fixed == 1, fixed
+
     # per-seed sheet
     ps = wb.create_sheet("MTL_per_seed")
-    hdr = ["task", "Bioactivity", "seed"] + METRICS + ["derived prevalence (pos/total)"]
+    hdr = ["task", "Bioactivity", "seed"] + METRICS + ["prevalence (pos/total)"]
     ps.append(hdr)
     for c in range(1, len(hdr) + 1):
         ps.cell(1, c).font = Font(bold=True)
@@ -174,12 +158,10 @@ def main():
 
     nt = wb.create_sheet("Notes")
     for line in [
-        "Built by Coding/update_benchmark_resubmission.py",
-        "MTL-PepPred rows (green) = mean of 5 independent runs, seeds 42, 1, 2, 3, 4 (B1). SD (sample, ddof=1) in *_SD columns.",
-        "All baseline rows are unchanged from 'Benchmark Summary - new.xlsx'.",
-        "ACC, AUC, MCC, Sn read from results/test_results_seed_*.json. Sp and BACC derived exactly from accuracy, precision and recall.",
-        "PR-AUC (mean of 5 runs, with SD) read from results/C0_seed{42,1,2,3,4}_pertask_metrics.csv (B6, 2026-09-21): AMP-off inference on the seed 1-4 weights, which were never deleted, using sklearn average_precision_score to match the manuscript's own method.",
-        "Check: UniDL4BioPep Antioxidant row in the original sheet reads ACC=AUC=PR-AUC=80.4 and MCC=87.2, which looks like a data-entry error. Verify against Du et al. 2023 before using it in the figures.",
+        "Built by scripts/update_benchmark_resubmission.py",
+        "MTL-PepPred rows (green) = mean of 5 independent runs, seeds 42, 1, 2, 3, 4. SD (sample, ddof=1) in *_SD columns. Stored at full precision, displayed at 2 dp; Table 4 shows the 2-dp rounding.",
+        "All baseline rows are unchanged from 'Benchmark Summary - new.xlsx', except the UniDL4BioPep antioxidant row, whose values from AUC onwards were shifted by one column in the source and are restored here.",
+        "All MTL-PepPred metrics read from results/C0_seed{42,1,2,3,4}_pertask_metrics.csv (AMP-off inference; PR-AUC = average precision).",
     ]:
         nt.append([line])
 
