@@ -1,11 +1,12 @@
 """
 Figure 3 (resubmission): per-task MTL-PepPred performance heatmap, mean ± SD of 5 runs.
 
-Reads  ../Benchmark Summary - resubmission.xlsx   (run update_benchmark_resubmission.py first)
+Reads  ../results/C0_seed{42,1,2,3,4}_pertask_metrics.csv
 Writes ../results/Figure_3_updated.png  and  .tif  (600 DPI)
 
-Cell = mean of 5 seeds; small text under it = SD across seeds.
-PR-AUC column is added automatically once MTL-PepPred PR-AUC is filled in (after C0).
+Cell = mean of 5 seeds; small text under it = sample SD across seeds. Computed from the
+per-seed values rather than read from the benchmark workbook, whose 2-dp rounding would be
+rounded a second time to the 1 dp shown here (e.g. 0.4461 -> 0.45 -> 0.5 instead of 0.4).
 """
 from pathlib import Path
 
@@ -15,51 +16,31 @@ import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
 
 HERE = Path(__file__).resolve().parent
-XLSX = HERE.parents[1] / "results" / "Benchmark Summary - resubmission.xlsx"
-OUT = HERE.parents[1] / "results" / "Figure_3_updated"
+RESULTS = HERE.parents[1] / "results"
+OUT = RESULTS / "Figure_3_updated"
+SEEDS = [42, 1, 2, 3, 4]
 MM = 1 / 25.4
 plt.rcParams.update({"font.family": ["Arial", "Liberation Sans", "DejaVu Sans"], "font.size": 8})
 
 NAME_MAP = {
-    "ACE inhibitory activity": "ACE Inh.",
-    "DPP IV inhibitory activity": "DPPIV Inh.",
-    "Bitter": "Bitter",
-    "Umami": "Umami",
-    "Antimicrobial activity": "Antimicrobial",
-    "Antimalarial activity (alternative dataset)": "Antimal. (alt)",
-    "Antimalarial activity (main dataset)": "Antimal. (main)",
-    "Quorum sensing activity": "Quorum",
-    "Anticancer activity (alternative dataset)": "Anticancer (alt)",
-    "Anticancer activity (main dataset)": "Anticancer (main)",
-    "Anti-MRSA strains activity": "Anti-MRSA",
-    "Tumor T cell antigens": "TTCA",
-    "Blood-Brain Barrier": "BBP",
-    "Antiparasitic activity": "Antiparasitic",
-    "Neuropeptide": "Neuro.",
-    "Antibacterial activity": "Antibact.",
-    "Antifungal activity": "Antifung.",
-    "Antiviral activity": "Antiviral",
-    "Toxicity": "Toxicity",
-    "Antioxidant activity": "Antioxidant",
+    "ACE_inhibitory": "ACE Inh.", "DPPIV_inhibitory": "DPPIV Inh.", "Bitter": "Bitter",
+    "Umami": "Umami", "Antimicrobial": "Antimicrobial", "Antimalarial_alt": "Antimal. (alt)",
+    "Antimalarial": "Antimal. (main)", "Quorum_sensing": "Quorum",
+    "Anticancer_alt": "Anticancer (alt)", "Anticancer": "Anticancer (main)",
+    "AntiMRSA": "Anti-MRSA", "TTCA": "TTCA", "BBP": "BBP", "Anti_parasitic": "Antiparasitic",
+    "NeuroPred": "Neuro.", "Antibacterial": "Antibact.", "Antifungal": "Antifung.",
+    "Antiviral": "Antiviral", "Toxicity": "Toxicity", "Antioxidant": "Antioxidant",
     "Signal_peptide": "Signal Pep.*",
 }
 
-df = pd.read_excel(XLSX, sheet_name="Sheet1")
-df["Bioactivity"] = df["Bioactivity"].ffill()
-df["Model"] = df["Model"].astype(str).str.strip()
-mtl = df[df["Model"] == "MTL-PepPred"].copy()
-
-ALL = ["ACC", "AUC", "PR-AUC", "MCC"]
-for m in ALL:
-    for c in (m, f"{m}_SD"):
-        mtl[c] = pd.to_numeric(mtl[c], errors="coerce")
-metrics = [m for m in ALL if mtl[m].notna().all()]
-if "PR-AUC" not in metrics:
-    print("NOTE: MTL-PepPred PR-AUC not available yet (C0 pending) -> PR-AUC column omitted.")
-
-mean = mtl[metrics].values
-sd = mtl[[f"{m}_SD" for m in metrics]].values
-names = [NAME_MAP.get(t, t) for t in mtl["Bioactivity"]]
+per_seed = pd.concat([pd.read_csv(RESULTS / f"C0_seed{s}_pertask_metrics.csv") for s in SEEDS])
+metrics = ["ACC", "AUC", "PR-AUC", "MCC"]
+cols = ["ACC", "AUC", "PR_AUC", "MCC"]
+grouped = per_seed.groupby("task")[cols]
+assert (grouped.size() == len(SEEDS)).all(), "every task needs all five seeds"
+mean = 100 * grouped.mean().values
+sd = 100 * grouped.std(ddof=1).values
+names = [NAME_MAP[t] for t in grouped.mean().index]
 order = np.argsort(mean.mean(axis=1))[::-1]
 mean, sd, names = mean[order], sd[order], [names[i] for i in order]
 

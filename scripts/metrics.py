@@ -83,21 +83,34 @@ def auc(y, s):
 
 
 def pr_auc(y, s):
-    """Area under precision-recall curve (trapezoidal over sorted scores)."""
+    """Average precision: sum over thresholds of (R_n - R_{n-1}) * P_n.
+
+    This is sklearn's average_precision_score, and it is what the manuscript's
+    Table 4 reports (Coding/update_benchmark_resubmission.py). It replaced a
+    trapezoidal integration of the PR curve on 2026-10-06, because the trapezoid
+    interpolates between operating points that are not achievable and gave a
+    different number for the same data: on the SignalP-6.0 evaluation
+    (results/A3_predictions.csv) the trapezoid gives 0.3021 and the average
+    precision 0.3026. Every PR-AUC in the paper now uses this definition.
+    """
     y = np.asarray(y).astype(int); s = np.asarray(s, dtype=float)
     P = int((y == 1).sum())
     if P == 0:
         return float("nan")
     order = np.argsort(-s, kind="mergesort")
     ys = y[order]
+    ss = s[order]
     tp = np.cumsum(ys)
     fp = np.cumsum(1 - ys)
     recall = tp / P
     precision = tp / np.maximum(tp + fp, 1)
-    recall = np.concatenate([[0.0], recall])
-    precision = np.concatenate([[1.0], precision])
-    # manual trapezoidal rule (np.trapz/np.trapezoid name varies across numpy versions)
-    return float(np.sum((precision[1:] + precision[:-1]) / 2.0 * np.diff(recall)))
+    # collapse tied scores onto their last index, so each distinct threshold
+    # contributes one operating point (sklearn does the same)
+    keep = np.r_[ss[1:] != ss[:-1], True]
+    recall = recall[keep]
+    precision = precision[keep]
+    d_recall = np.diff(np.concatenate([[0.0], recall]))
+    return float(np.sum(d_recall * precision))
 
 
 def all_metrics(y, s, threshold=0.5):
