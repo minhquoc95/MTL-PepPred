@@ -1,0 +1,3 @@
+task,chosen_threshold,val_mcc_at_threshold,test_acc_default,test_acc_calibrated,test_mcc_default,test_mcc_calibrated,test_f1_default,test_f1_calibrated,test_auc,n_test
+Bitter,0.55,0.9065,0.875,0.875,0.7515,0.7533,0.871,0.8689,0.9653,128
+Anti_parasitic,0.22,0.9571,0.6957,0.7609,0.4587,0.5669,0.5882,0.7027,0.8256,92

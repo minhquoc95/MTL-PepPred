@@ -1,0 +1,2 @@
+task,n,n_pos,ACC,AUC,PR_AUC,MCC,Sn,Sp,n_total_params,n_trainable_params,trainable_pct
+Hemolytic,162,79,0.8025,0.8612,0.8606,0.6082,0.7342,0.8675,756418241,688770,0.0911

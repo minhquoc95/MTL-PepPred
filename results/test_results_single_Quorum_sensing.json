@@ -1,0 +1,17 @@
+{
+  "best_val_avg_f1": 0.9176470588235294,
+  "test_avg_acc": 0.925,
+  "test_avg_f1": 0.9230769230769231,
+  "test_avg_auc": 0.99,
+  "test_avg_mcc": 0.8510644963469901,
+  "test_metrics": {
+    "Quorum_sensing": {
+      "accuracy": 0.925,
+      "precision": 0.9473684210526315,
+      "recall": 0.9,
+      "f1": 0.9230769230769231,
+      "auc": 0.99,
+      "mcc": 0.8510644963469901
+    }
+  }
+}

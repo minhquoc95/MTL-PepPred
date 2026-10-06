@@ -1,0 +1,22 @@
+task,b1_key,general_baseline_model,general_baseline_AUC,dedicated_baseline_model,dedicated_baseline_AUC,MTL_original_AUC,MTL_new_mean_AUC,new_AUC_SD,matches_general_original,matches_general_new,matches_dedicated_original,matches_dedicated_new
+ACE inhibitory activity,ACE_inhibitory,PDeepPP,90.49,mAHTPred,95.1,91.82,86.00,1.56,True,False,False,False
+DPP IV inhibitory activity,DPPIV_inhibitory,PDeepPP,96.15,iDPPIV-SCM,84.7,92.88,94.64,0.55,False,False,True,True
+Bitter,Bitter,UniDL4BioPep,98.24,iBitter-Fuse,93.3,97.36,95.96,0.19,False,False,True,True
+Umami,Umami,PDeepPP,95.43,iUmami-SCM,89.8,94.7,92.73,0.89,False,False,True,True
+Antimicrobial activity,Antimicrobial,PDeepPP,99.47,,,98.56,98.12,0.27,False,False,,
+Antimalarial activity (alternative dataset),Antimalarial_alt,PDeepPP,99.29,iAMAP-SCM,90.3,100.0,99.69,0.18,True,True,True,True
+Antimalarial activity (main dataset),Antimalarial,PDeepPP,90.49,iAMAP-SCM,82.0,98.0,91.62,1.65,True,True,True,True
+Quorum sensing activity,Quorum_sensing,PDeepPP,99.75,iQSP,96.0,96.38,98.30,0.91,False,False,True,True
+Anticancer activity (alternative dataset),Anticancer_alt,UniDL4BioPep,97.11,iACP-FSCM,93.0,98.93,96.81,0.66,True,False,True,True
+Anticancer activity (main dataset),Anticancer,PDeepPP,83.34,iACP-FSCM,81.2,82.2,81.49,1.24,False,False,True,True
+Anti-MRSA strains activity,AntiMRSA,PDeepPP,99.98,SCMRSA,98.6,100.0,98.70,0.87,True,False,True,True
+Tumor T cell antigens,TTCA,PDeepPP,81.98,ITTCA-Hybrid,75.6,73.31,79.57,1.94,False,False,False,True
+Blood-Brain Barrier,BBP,PDeepPP,96.4,BBBpred,78.95,93.35,92.52,2.93,False,False,True,True
+Antiparasitic activity,Anti_parasitic,PDeepPP,92.67,PredAPP,92.2,92.72,81.79,6.32,True,False,True,False
+Neuropeptide,NeuroPred,UniDL4BioPep,97.07,NeuroPred-CLQ,98.8,95.15,94.94,0.33,False,False,False,False
+Antibacterial activity,Antibacterial,PDeepPP,98.11,ABPDiscover,97.5,96.7,97.29,0.18,False,False,False,False
+Antifungal activity,Antifungal,PDeepPP,99.11,ABPDiscover,98.8,99.28,98.91,0.22,True,False,True,True
+Antiviral activity,Antiviral,PDeepPP,91.92,ABPDiscover,89.6,90.04,91.55,0.46,False,False,True,True
+Toxicity,Toxicity,UniDL4BioPep,99.43,ATSE,97.6,97.47,96.14,0.47,False,False,False,False
+Antioxidant activity,Antioxidant,UniDL4BioPep,80.4,,,85.11,82.97,0.53,True,True,,
+Signal_peptide,Signal_peptide,PDeepPP,99.97,,,99.97,99.91,0.07,True,False,,
