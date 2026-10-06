@@ -1,0 +1,4 @@
+subset,n,n_pos,n_neg,ACC,AUC,MCC
+all_antiviral_test,1246,623,623,0.8395,0.9108,0.679
+overlapping_with_tox_amp_ab_af,390,382,8,0.8026,0.929,0.2741
+non_overlapping,856,241,615,0.8563,0.9328,0.6877

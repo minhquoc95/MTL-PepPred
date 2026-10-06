@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: MTL-PepPred
+abstract: >-
+  A multi-task deep learning framework with a frozen protein language model for
+  unified prediction of food bioactive peptide functions.
+authors:
+  - family-names: Ha
+    given-names: Minh Quoc
+  - family-names: Son
+    given-names: Ha Xuan
+  - family-names: Kam
+    given-names: Rothman
+  - family-names: Seale
+    given-names: Brent
+  - family-names: Bang-Berthelsen
+    given-names: Claus Heiner
+  - family-names: Le
+    given-names: Thao T.
+license: MIT
+repository-code: "https://github.com/minhquoc95/MTL-PepPred"
+preferred-citation:
+  type: article
+  title: >-
+    MTL-PepPred: A Multi-Task Deep Learning Framework with a Frozen Protein Language
+    Model for Unified Prediction of Food Bioactive Peptide Functions
+  journal: Food Bioscience
+  year: 2026
+  status: submitted
+  authors:
+    - family-names: Ha
+      given-names: Minh Quoc
+    - family-names: Son
+      given-names: Ha Xuan
+    - family-names: Kam
+      given-names: Rothman
+    - family-names: Seale
+      given-names: Brent
+    - family-names: Bang-Berthelsen
+      given-names: Claus Heiner
+    - family-names: Le
+      given-names: Thao T.

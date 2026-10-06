@@ -1,0 +1,36 @@
+method,comparison_task,antiviral_label,comparison_label,kind,n_match,n_antiviral_subset,pct_of_antiviral_subset
+exact,Toxicity,1,1,co_positive,0,2944,0.0
+exact,Toxicity,1,0,avir_pos_vs_comparison_neg (label conflict),2,2944,0.07
+exact,Toxicity,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+exact,Toxicity,0,0,co_negative,0,2944,0.0
+exact,Antimicrobial,1,1,co_positive,1718,2944,58.36
+exact,Antimicrobial,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+exact,Antimicrobial,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+exact,Antimicrobial,0,0,co_negative,0,2944,0.0
+exact,Antibacterial,1,1,co_positive,0,2944,0.0
+exact,Antibacterial,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+exact,Antibacterial,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+exact,Antibacterial,0,0,co_negative,12,2944,0.41
+exact,Antifungal,1,1,co_positive,0,2944,0.0
+exact,Antifungal,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+exact,Antifungal,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+exact,Antifungal,0,0,co_negative,4,2944,0.14
+neardup_jaccard>=0.9,Toxicity,1,1,co_positive,1,2944,0.03
+neardup_jaccard>=0.9,Toxicity,1,0,avir_pos_vs_comparison_neg (label conflict),3,2944,0.1
+neardup_jaccard>=0.9,Toxicity,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Toxicity,0,0,co_negative,0,2944,0.0
+neardup_jaccard>=0.9,Antimicrobial,1,1,co_positive,1788,2944,60.73
+neardup_jaccard>=0.9,Antimicrobial,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antimicrobial,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antimicrobial,0,0,co_negative,0,2944,0.0
+neardup_jaccard>=0.9,Antibacterial,1,1,co_positive,5,2944,0.17
+neardup_jaccard>=0.9,Antibacterial,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antibacterial,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antibacterial,0,0,co_negative,45,2944,1.53
+neardup_jaccard>=0.9,Antifungal,1,1,co_positive,0,2944,0.0
+neardup_jaccard>=0.9,Antifungal,1,0,avir_pos_vs_comparison_neg (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antifungal,0,1,avir_neg_vs_comparison_pos (label conflict),0,2944,0.0
+neardup_jaccard>=0.9,Antifungal,0,0,co_negative,5,2944,0.17
+composition,Antiviral_positive,,,n/mean_length/mean_charge/mean_gravy,2944,,len=20.77 charge=0.796 gravy=-0.258
+composition,Antimicrobial_positive,,,n/mean_length/mean_charge/mean_gravy,6460,,len=36.04 charge=3.87 gravy=-0.131
+composition,Toxicity_positive,,,n/mean_length/mean_charge/mean_gravy,1932,,len=32.38 charge=0.813 gravy=-0.259

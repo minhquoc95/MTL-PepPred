@@ -1,0 +1,2 @@
+window,identity_cut,n_pos,n_neg,dropped_nonstd_pos,dropped_leak_pos,dropped_nonstd_neg,dropped_leak_neg,AUC,PR_AUC,ACC_natural,MCC_natural,Sn_natural,Sp_natural,ACC_balanced,MCC_balanced
+60,0.9,1231,7580,0,0,0,0,0.7682,0.3021,0.6644,0.2945,0.7709,0.6471,0.7169,0.4363

@@ -2,8 +2,14 @@
 
 Multi-Task Learning (MTL) peptide classifier trained on UniDL4BioPep peptide activity datasets using a PDeepPP-inspired architecture with ESM-2 backbone.
 
+Predicts 21 peptide bioactivities with one set of stored weights and one protein language
+model pass per sequence, reducing stored parameters by ~95% relative to 21 separate
+single-task models. Joint training helps some tasks and harms others: against single-task
+models of identical architecture, 12 of 21 improve by AUC and 9 decline.
+
 - **Pretrained model**: [huggingface.co/minhquoc95/MTL-PepPred](https://huggingface.co/minhquoc95/MTL-PepPred)
-- **Datasets**: [`datasets/`](datasets/) — 21 UniDL4BioPep-derived task CSVs (train/test split)
+- **Datasets**: [`datasets/`](datasets/) — 21 UniDL4BioPep-derived task CSVs (train/test split), plus the filtered haemolytic set used in Section 3.6 in [`datasets/hemolytic/`](datasets/hemolytic/)
+- **Analysis scripts and results**: [`scripts/`](scripts/) and [`results/`](results/) — see [Reproducing the published results](#reproducing-the-published-results)
 
 ## Architecture
 
@@ -67,6 +73,24 @@ Input: Peptide Sequence
 19. Toxicity - Toxicity prediction
 20. Antioxidant - Antioxidant activity
 21. Signal_peptide - Signal peptides
+
+## Results
+
+All figures are the mean ± standard deviation of five independent training runs
+(seeds 42, 1, 2, 3 and 4).
+
+| Metric | Mean ± SD |
+|---|---|
+| Accuracy | 87.43 ± 0.23% |
+| AUC | 92.84 ± 0.28% |
+| PR-AUC | 92.19 ± 0.43% |
+| MCC | 73.73 ± 0.46% |
+
+Per-task values, the single-task comparison, the frozen-versus-fine-tuned comparison and the
+external signal-peptide evaluation are in `results/`. Earlier single-run numbers
+(89.4% / 94.0% / 78.6%) are superseded and should not be cited.
+
+Pretrained weights: https://huggingface.co/minhquoc95/MTL-PepPred
 
 ## Files
 
@@ -252,6 +276,43 @@ Each run saves an `ablation_config.json` alongside the checkpoint for full repro
 - **Masked Pooling**: Handles variable-length peptide sequences
 - **Auto Variant Naming**: Checkpoint directories named automatically from active ablation flags
 - **Windows Compatible**: DataLoader `num_workers` auto-set to 0 on Windows
+
+## Reproducing the published results
+
+Run everything from the repository root. Scripts in `scripts/` import `mtl_peptide_classifier`
+from the root, so prefix them with `PYTHONPATH=.` (on Windows: `set PYTHONPATH=.`). The
+`--seed` and `--only_task` options of `train_mtl.py` are added by `scripts/patch_train_mtl.py`;
+apply it once before any training run.
+
+| Manuscript item | Script | Output in `results/` |
+|---|---|---|
+| Table 4, Figures 2 and 3 — five-run means | `scripts/patch_train_mtl.py`; `train_mtl.py --seed <s>` for s = 42, 1, 2, 3, 4; `scripts/exp_seed_pertask_metrics.py --seed_tag <s>` for each run; `scripts/rebuild_b1_from_c0.py`; `scripts/update_benchmark_resubmission.py`; `scripts/figures/Figure_2_overall_resubmission.py`, `scripts/figures/Figure_3_heatmap_resubmission.py` | `test_results_seed_*.json`, `C0_seed*_pertask_metrics.csv`, `C0_seed*_test_probs.csv`, `B1_multiseed_overall.csv`, `B1_multiseed_pertask.csv`, `Benchmark Summary - resubmission.xlsx` |
+| Wilcoxon signed-rank comparison with the baselines | `scripts/wilcoxon_analysis.py` | `MTL_Statistical_Analysis.xlsx` (written when run) |
+| Figure 1 — workflow schematic | `scripts/figures/Figure_1_workflow_build.py` (needs `cairosvg`, `Pillow`) | — |
+| Figure 4 — ROC and PR curves | `scripts/figures/Figure_4_roc_pr_resubmission.py` | `C0_seed42_test_probs.csv` |
+| Table 6 — ablation | `ablation_report.py` | — |
+| Table 7 — frozen vs fine-tuned backbone | `train_mtl.py --unfreeze_esm --lr 1e-5` | `results_unfrozen.json`, `test_results_unfrozen.json` |
+| Section 3.5, Figure 5, Table S4 — single-task baselines and transfer | `train_mtl.py --only_task <TASK> --seed 42` for each of the 21 tasks, then `scripts/aggregate.py b2`; `scripts/figures/Figure_5_transfer_variance_resubmission.py` | `test_results_single_*.json`, `B2_transfer_deltas.csv` |
+| Figure 5a, Table S3 — learned task variances | `scripts/aggregate.py b1` | `B4_task_variances.csv`, `task_variances_seed_*.json` |
+| Section 3.6 — adding a 22nd activity (haemolytic) | `datasets/hemolytic/prep_hemolytic.py`, then `scripts/exp_B5_extensibility.py`; single-task reference: `scripts/patch_add_hemo_task.py` and `train_mtl.py --only_task Hemolytic` | `B5_extensibility_head_metrics.csv`, `B5_invariance_check.csv`, `test_results_single_Hemolytic.json` |
+| Section 2.5 and 3.3.4, Table 5 — SignalP-6.0 external evaluation | `scripts/exp_A3_independent_sp.py` | `A3_independent_signalpeptide.csv`, `A3_predictions.csv` |
+| Table S2 — decision-threshold calibration | `scripts/exp_A2_threshold.py` | `A2_threshold_calibration.csv` |
+| Figure S1 — sequence-length distribution | `scripts/exp_A1_length.py`; `scripts/figures/Figure_S1_length_resubmission.py` | `A1_lengths_hist.csv`, `A1_lengths_summary.csv` |
+| Section 3.3.2 — antiviral label-overlap check | `scripts/exp_A4_antiviral_overlap.py` | `A4_antiviral_overlap.csv`, `A4_antiviral_subset_metrics.csv` |
+| Table S1 — the 47 negative-set source databases | — | `Table_S1_negative_sources.csv` |
+
+Shared helpers: `scripts/metrics.py` (metric definitions) and `scripts/model_loader.py`
+(checkpoint loading). Script-by-script notes are in `scripts/SCRIPTS_README.md`.
+
+The haemolytic data in `datasets/hemolytic/` are kept out of `datasets/` on purpose, so that
+the default 21-task training run does not pick them up.
+
+## Licence
+
+The code is released under the MIT licence (see `LICENSE`). The MIT licence covers the code
+only, not the third-party data: the datasets are redistributed from UniDL4BioPep, Peptipedia,
+HemoPI2, SignalP-6.0 and the 47 databases listed in Table S1, each under its own terms. To cite
+this work, see `CITATION.cff`.
 
 ## Requirements
 

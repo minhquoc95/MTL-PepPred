@@ -1,0 +1,5 @@
+metric,mean,sd
+test_avg_acc,0.8743,0.0023
+test_avg_auc,0.9284,0.0028
+test_avg_pr_auc,0.9219,0.0043
+test_avg_mcc,0.7373,0.0046
