@@ -9,6 +9,31 @@ models of identical architecture, 12 of 21 improve by AUC and 9 decline.
 - **Datasets**: [`datasets/`](datasets/) — 21 UniDL4BioPep-derived task CSVs (train/test split), plus the filtered haemolytic set used in Section 3.6 in [`datasets/hemolytic/`](datasets/hemolytic/)
 - **Analysis scripts and results**: [`scripts/`](scripts/) and [`results/`](results/) — see [Reproducing the published results](#reproducing-the-published-results)
 
+**Author and maintainer:** Minh Quoc Ha ([@minhquoc95](https://github.com/minhquoc95)), who designed,
+implemented and trained MTL-PepPred. Co-authors of the accompanying article are listed in
+[`CITATION.cff`](CITATION.cff); please cite the article when you use the model.
+
+## Quick start: predict bioactivities for your own peptides
+
+No training, no GPU and no local data are needed. The pretrained weights (about 420 MB) and the
+ESM-2 650M encoder (about 2.6 GB) are downloaded automatically on first use.
+
+```bash
+git clone https://github.com/minhquoc95/MTL-PepPred.git
+cd MTL-PepPred
+pip install -r requirements.txt
+
+# a few sequences on the command line: prints all 21 probabilities, highest first
+python predict.py KWKLFKKIEKVGQNIRDGIIKAGPAVAVVGQATQIAK IPP VPP
+
+# many sequences: CSV with a "sequence" column, or a FASTA file
+python predict.py --input peptides.csv --output predictions.csv
+```
+
+`predictions.csv` has one row per peptide and one column per task, each the probability (0–1)
+that the peptide has that activity; 0.5 is the decision threshold used in the article.
+Sequences must use the 20 standard amino acids; anything longer than 128 residues is truncated.
+
 ## Architecture
 
 ```
@@ -92,13 +117,13 @@ Pretrained weights: https://huggingface.co/minhquoc95/MTL-PepPred
 
 ## Files
 
+- **`predict.py`** - Predict all 21 activities for your own sequences with the pretrained weights (see Quick start)
 - **`mtl_peptide_classifier.py`** - Model architecture and data utilities (supports ablation flags)
 - **`train_mtl.py`** - Training script with ablation study CLI
 - **`evaluate_mtl_comprehensive.py`** - Comprehensive evaluation script
 - **`ablation_report.py`** - Ablation study reporting and comparison
 - **`process_signal_peptides.py`** - Signal peptide dataset preprocessing
-- **`SignalPeptides_dattaset_balanced.xlsx`** - Balanced signal peptide dataset
-- **`datasets/`** - 21 task CSVs (train/test), UniDL4BioPep-derived + local signal peptide data
+- **`datasets/`** - 21 task CSVs (train/test), UniDL4BioPep-derived + local signal peptide data (`19__Signal_peptides_*.csv`)
 
 ## Training Configuration
 
@@ -314,17 +339,26 @@ this work, see `CITATION.cff`.
 
 ## Requirements
 
+`pip install -r requirements.txt` installs everything needed for prediction, training,
+evaluation and the analysis scripts:
+
 ```
 torch>=2.0.0
 transformers>=4.30.0
 huggingface_hub
-esm
 numpy
 pandas
 scikit-learn
+scipy
 tqdm
 openpyxl
+matplotlib
+seaborn
 ```
+
+The ESM-2 encoder is loaded through `transformers`; the separate `esm` package is not needed.
+Only `scripts/figures/Figure_1_workflow_build.py` needs two more packages: `cairosvg` and
+`Pillow`. Tested with Python 3.12, PyTorch 2.5.1 and Transformers 4.57.
 
 ## References
 

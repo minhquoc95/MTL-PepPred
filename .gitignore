@@ -74,3 +74,6 @@ eval_full_metrics.py
 
 # Empty file created
 nul
+
+# Pretrained weights downloaded by predict.py
+MTL-PepPred-weights/
